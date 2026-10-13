@@ -1,0 +1,13 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const source=fs.readFileSync(require('node:path').join(__dirname,'../assets/app.js'),'utf8');
+const extract=(from,to)=>source.slice(source.indexOf(from),source.indexOf(to,source.indexOf(from)));
+const nodes=new Map();
+class Node{constructor(tag){this.tag=tag;this.children=[];this.dataset={};this.style={setProperty:(k,v)=>this[k]=v};this.queries=new Map();this.handlers={};this.classList={add(){},remove(){}}}setAttribute(k,v){this[k]=v}addEventListener(k,v){this.handlers[k]=v}querySelectorAll(){return []}append(...nodes){this.children.push(...nodes);for(const n of nodes)if(n.id)globalNodes.set(n.id,n)}replaceChildren(...nodes){this.children=nodes}querySelector(k){if(!this.queries.has(k))this.queries.set(k,new Node('mock'));return this.queries.get(k)}}
+const globalNodes=nodes,body=new Node('body');let opens=0;
+const ctx={Image:class{decode(){return Promise.resolve()}},$:id=>nodes.get(id),document:{createElement:tag=>new Node(tag),body},openDetailDialog:dialog=>{dialog.open=true;opens++}};vm.createContext(ctx);
+vm.runInContext(extract('const SPACE_PETS=[','function spacePetMarkup')+extract('function companionArtworkUrl(','function warmCompanionArtwork')+extract('const PET_LORE_TEXTS=[','function openPetLore(){'),ctx);
+for(let kind=0;kind<8;kind++){ctx.openPetWorld(kind);const d=nodes.get('petWorldDialog');assert.equal(d.dataset.kind,String(kind));assert.equal(d.querySelector('.petWorldStats').children.length,6);assert.match(d.querySelector('.petWorldCharacter').src,/\/assets\/icons\/crypto\//);assert.ok(d.querySelector('h2').textContent);assert.match(d.querySelector('.petWorldStats').children[0].children[1].textContent,/(m|km)$/);assert.doesNotMatch(d.querySelector('.petWorldPlaque').textContent,/NO\.|number|0[1-8]/i)}
+assert.equal(body.children.length,1,'reuse the display page instead of adding scenes on every visit');assert.equal(opens,8);ctx.openPetWorld(-1);ctx.openPetWorld(99);assert.equal(opens,8,'invalid character cannot open a blank exhibit');
+assert.match(source,/article\.onclick=\(\)=>openPetWorld\(kind\)/);assert.match(source,/--paper-feed',\(-viewport\.scrollTop\)/);assert.doesNotMatch(source,/--roll-phase.*scrollTop%24/);
+ctx.openPetWorld(3);const meteor=nodes.get('petWorldDialog');assert.equal(meteor.querySelector('.petWorldStats').children[0].children[0].textContent,'本体高度');assert.equal(meteor.querySelector('.petWorldStats').children[0].children[1].textContent,'1.2 km');
+console.log('Partner world: eight distinct profiles, six fields, shared lazy page, invalid kind guard and continuous paper feed PASS');

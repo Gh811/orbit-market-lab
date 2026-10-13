@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="黄金商品示意图">
+  <circle cx="48" cy="48" r="48" fill="#efb237"/>
+  <g fill="#ffffff" stroke="#ffffff" stroke-width="2" stroke-linejoin="round">
+    <path d="M35 24h25l5 15H30z"/>
+    <path d="M14 47h24l5 15H9z"/>
+    <path d="M57 47h24l5 15H53z"/>
+  </g>
+</svg>

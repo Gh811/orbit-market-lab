@@ -1,0 +1,10 @@
+'use strict';
+const assert=require('node:assert/strict'),{trendPullback}=require('../backtest/strategies.cjs');
+const bars=Array.from({length:240},(_,i)=>{const c=100+i*.1;return{t:i*14400000,o:c-.1,h:c+1,l:c-1,c,v:100,confirmed:true}});
+for(const [i,c] of [[237,122.2],[238,122.4]])bars[i]={...bars[i],o:c-.1,h:c+1,l:c-1,c};bars[239]={...bars[239],o:123.7,c:123.9,l:122,h:124};
+const long=trendPullback(bars);assert.equal(long.direction,'up');assert(long.stop<bars.at(-1).c);assert(Math.abs((long.target-bars.at(-1).c)/(bars.at(-1).c-long.stop)-2)<1e-10);
+const mirrored=bars.map(b=>({...b,o:300-b.o,h:300-b.l,l:300-b.h,c:300-b.c})),short=trendPullback(mirrored);assert.equal(short.direction,'down');assert(short.stop>mirrored.at(-1).c);assert(short.target<mirrored.at(-1).c);
+const flat=bars.map(b=>({...b,o:100,c:100,l:99,h:101}));assert.equal(trendPullback(flat).direction,null);
+assert.equal(trendPullback(bars.slice(0,199)).direction,null);
+const unchanged=JSON.stringify(bars);trendPullback(bars);assert.equal(JSON.stringify(bars),unchanged);
+console.log('Trend baseline PASS: confirmed pullback long/short symmetry, frozen 2R plan, mixed trend rejection, warmup, immutable input');

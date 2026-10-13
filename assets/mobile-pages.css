@@ -1,0 +1,142 @@
+.bootCover{display:none}
+/* 桌面端 3D 星轨背景层不属于移动端：手机设备（含横屏锁定视口）与窄屏窗口
+   一律不显示。data-device 由 head 内同步脚本在首绘前写入，可挡住任何
+   脚本时序、旧缓存与慢网速下的穿透闪现。 */
+html[data-device="phone"] .ambientField{display:none!important}
+@media(max-width:720px){.ambientField{display:none!important}}
+/* Critical mobile cover: CSS fallback paints before illustrations arrive. */
+[data-entry-shell][hidden]{display:none!important}
+html.bootLoading{background:#091726;color:#f6ead6}
+html.bootLoading body{margin:0;overflow:hidden}
+html.bootLoading body>*:not(#bootCover){visibility:hidden!important}
+html.bootLoading dialog::backdrop{background:transparent!important;visibility:hidden!important;backdrop-filter:none!important}
+html.bootLoading #bootCover{display:flex}
+.bootCover{position:fixed;inset:0;z-index:2147483000;box-sizing:border-box;min-height:100dvh;padding:calc(env(safe-area-inset-top) + 34px) 28px calc(env(safe-area-inset-bottom) + 34px);flex-direction:column;align-items:center;justify-content:center;overflow:hidden;background:radial-gradient(ellipse at 50% 32%,#203f53 0,#102335 43%,#09131f 83%);font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;color:#f6ead6;text-align:center}
+.bootCover[hidden]{display:none!important}
+.bootScene{position:relative;width:min(78vw,320px);height:min(72vw,294px);margin-bottom:26px}
+.bootDrawing{position:relative;width:100%;height:100%;filter:drop-shadow(0 20px 22px #0005);animation:bootFloat 5s ease-in-out infinite}
+.bootOrbit{position:absolute;inset:7% 0;border:1px solid #9dc4c524;border-radius:50%;transform:rotate(-25deg);box-shadow:inset 0 0 35px #8ad1dc08}
+.bootOrbit:after{content:'';position:absolute;left:9%;top:14%;width:5px;height:5px;border-radius:50%;background:#beeae4;box-shadow:0 0 18px #7ce1df}
+.bootOrbit.orbitTwo{inset:0 10%;transform:rotate(27deg);border-color:#e0c08a1a}
+.bootEyebrow{margin:0 0 14px;color:#c8b084;font-size:11px;font-weight:600;letter-spacing:.23em}
+.bootCover h2{margin:0 0 33px;font-size:23px;font-weight:500;letter-spacing:.08em}
+.bootProgress{width:min(76vw,292px);height:7px;overflow:hidden;background:#abc7cf14;border:1px solid #9ebbc51a;border-radius:99px;box-shadow:inset 0 1px 4px #0006}
+.bootProgress>span{position:relative;display:block;width:6%;height:100%;border-radius:inherit;background:linear-gradient(90deg,#578eae,#96dfd5 65%,#e8cf9c);box-shadow:0 0 12px #b2e9d855;transition:width .18s linear;overflow:hidden}
+.bootProgress>span:after{content:'';position:absolute;inset:0;background:linear-gradient(105deg,transparent 15%,#ffffff8c 45%,transparent 75%);transform:translateX(-100%);animation:bootFlow 1.9s linear infinite}
+.bootStatus{margin:18px 0 0;color:#9fb7c4;font-size:12px;letter-spacing:.08em;line-height:1.7}
+.bootCover button{margin-top:22px;padding:11px 24px;border:1px solid #a8d3d552;border-radius:99px;background:#204051;color:#dfefe8;font:inherit;font-size:13px}
+.bootCover button[hidden]{display:none}
+@keyframes bootFloat{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-9px) rotate(2deg)}}
+@keyframes bootFlow{to{transform:translateX(100%)}}
+@media(prefers-reduced-motion:reduce){.bootDrawing,.bootProgress>span:after{animation:none}.bootProgress>span{transition:none}}
+@media(max-height:600px){.bootScene{width:190px;height:170px;margin-bottom:10px}.bootCover h2{font-size:20px;margin-bottom:20px}.bootCover{padding-top:18px;padding-bottom:18px}}
+
+@media (max-width:720px){
+  .petCountText{display:none!important}
+  .newsPage{width:100%;max-width:none;box-sizing:border-box;padding:calc(env(safe-area-inset-top) + 16px) 18px calc(env(safe-area-inset-bottom) + 24px)}
+  .newsHeader{gap:12px}
+  .newsCards{display:block}
+  html[data-theme] .newsCard,.newsCard{border:0;border-bottom:1px solid var(--line);border-radius:0;box-shadow:none;background:transparent;padding:20px 0}
+  html[data-theme] dialog.detailDialog,dialog.detailDialog{
+    position:fixed;inset:0;margin:0;width:100vw;max-width:none;height:var(--mobile-viewport-height,100dvh);max-height:none;
+    border:0;border-radius:0;box-shadow:none;padding:0;overflow:auto;background:var(--paper,#0a1226);touch-action:pan-y;overscroll-behavior:contain;
+  }
+  dialog.detailDialog::backdrop{background:#0a1226;backdrop-filter:none}
+  .mobilePageHeader{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;background:var(--paper,#0a1226);border-bottom:1px solid var(--line);min-height:68px;box-sizing:border-box}
+  .mobilePageBack{width:44px;height:44px;min-width:44px;min-height:44px;border:1px solid var(--line);border-radius:14px;background:var(--raised);color:var(--ink);display:grid;place-items:center}
+  .mobilePageBack svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  .mobilePageTitle{font-size:19px;color:var(--ink)}
+  dialog.detailDialog .dialogClose,dialog.detailDialog .mobileMoreHead,dialog.detailDialog .authTop,dialog.detailDialog .watchActionHead,dialog.detailDialog .panelhead{display:none}
+  dialog.detailDialog > .panel,dialog.detailDialog .authPanel,dialog.detailDialog .groupManagePanel{border:0;border-radius:0;box-shadow:none;width:100%;max-height:none;overflow:visible;box-sizing:border-box;padding:20px 18px calc(env(safe-area-inset-bottom) + 24px)}
+  dialog.detailDialog .infoBody{padding:0}
+  dialog.detailDialog .infoPanel .profileIdentity{padding-top:0}
+  .mobileRouteHidden{display:none!important}
+  .mobileFunctionMenu{display:flex;flex-direction:column;gap:0}
+  .mobileFunctionMenu button{display:flex;align-items:center;justify-content:space-between;min-height:64px;width:100%;padding:16px 2px;border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent;color:var(--ink);font-size:17px;text-align:left}
+  .mobileFunctionMenu button:after{content:'›';font-size:28px;color:var(--muted)}
+  #mobileMoreBody{padding:18px;min-height:0;overflow:visible}
+  #mobileMoreBody .panel,#mobileMoreBody .settings{border:0;border-radius:0;box-shadow:none;padding:0;background:transparent}
+  #mobileMoreBody .settings{display:flex;flex-direction:column;align-items:stretch;gap:20px}
+  #mobileMoreBody .check{min-height:48px}
+  #mobileMoreBody .settings .schemeControl{min-height:48px}
+  #mobileMoreBody .sidebarNewsList{max-height:none}
+  #mobileMoreBody .sidebarNews .panelhead{display:flex;align-items:center;justify-content:space-between;padding:0 0 16px}
+  #mobileMoreBody .sidebarNews .panelhead h2{display:none}
+  #mobileMoreBody .insightDisclosure>summary{display:none}
+  #mobileMoreBody .candleInsight{border:0;border-radius:0;box-shadow:none;padding:0}
+  #mobileMoreBody #addForm{display:flex;flex-direction:column;gap:16px}
+  #mobileMoreBody #symbol,#mobileMoreBody #addGroup{min-height:48px;font-size:16px;width:100%;box-sizing:border-box}
+  #mobileMoreBody #addForm>button{min-height:48px}
+  #authDialog .authMascot{display:flex;align-items:center;justify-content:center;margin:0 auto 24px;width:100%;height:220px;background:radial-gradient(ellipse at 50% 70%,rgba(111,231,245,.12),transparent 62%)}
+  #authDialog .authMascot > *{display:none}
+  #authDialog .authMascot:after{content:'';width:210px;height:210px;background:url('/assets/icons/crypto/spacerabbit.png?v=20261012-crystal43') center/contain no-repeat;filter:drop-shadow(0 16px 14px rgba(0,0,0,.25));animation:petFloat 4s ease-in-out infinite}
+  #authDialog .authSigned{display:flex;flex-direction:column;gap:14px}
+  #authDialog .authSigned[hidden]{display:none}
+  #authDialog .authSigned p{margin:0;padding:14px 0;border-bottom:1px solid var(--line)}
+  #authDialog #passwordDetails>summary{display:flex;align-items:center;justify-content:space-between;min-height:56px;font-size:16px;padding:0;border:0;background:none}
+  #authDialog #passwordDetails>summary:after{content:'›';font-size:26px}
+  #authDialog #passwordDetails>summary~*{display:none}
+  #authDialog #authLogout{min-height:48px}
+  #mobilePasswordPage #passwordForm{margin:20px 18px;gap:20px}
+  #mobilePasswordPage #passwordForm input{min-height:48px;font-size:16px}
+}
+@media (min-width:721px){.mobilePageHeader,.mobileFunctionMenu{display:none}}
+@media (max-width:720px) and (prefers-reduced-motion:reduce){#authDialog .authMascot:after{animation:none}}
+
+/* Phone canvas retains its portrait dimensions when the device rotates.
+   contain:paint keeps fixed panels inside this portrait canvas like the old
+   transform did, without the phantom scroll area a transformed body creates. */
+html[data-device="phone"]{width:var(--phone-layout-width);min-height:var(--phone-layout-height)}
+html[data-device="phone"] body{position:relative;width:var(--phone-layout-width);height:var(--phone-layout-height);contain:paint}
+
+/* 宁静水晶星云启动页；插画载入前保留同色渐变底。 */
+.bootCover{background-color:#263c58;background-image:linear-gradient(180deg,#162c4666,#1c355477),url('/assets/icons/crypto/crystalbg.png?v=20261012-crystal43');background-size:cover;background-position:center;color:#f2f6fb}
+.bootScene{width:min(66vw,270px);height:min(72vw,294px);display:grid;place-items:center;margin-bottom:24px;isolation:isolate}
+.bootCompanion{position:relative;z-index:1;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 13px 12px #15344c55);animation:bootCompanionBreathe 5s ease-in-out infinite}
+.bootHalo{position:absolute;inset:13% 0 9%;border-radius:50%;background:radial-gradient(ellipse,#d5f3ff22,transparent 70%);filter:blur(7px)}
+.bootPlinth{position:absolute;left:18%;right:18%;bottom:4%;height:16px;border:1px solid #def3ff55;border-radius:50%;background:radial-gradient(ellipse,#edfaff28,#9ac4e20c 70%);box-shadow:0 3px 0 #57819a30,0 0 24px #c4e6f521}
+.bootEyebrow{color:#f1dbb2;text-shadow:0 1px 3px #25364b55}
+.bootCover h2{font-size:22px;font-weight:550;letter-spacing:.04em;text-shadow:0 2px 6px #20395166}
+.bootStatus{color:#d2deeb;letter-spacing:.04em}
+.bootProgress{background:#cce7ff20;border-color:#d7eafa44;box-shadow:inset 0 1px 4px #2a456444}
+.bootProgress>span{background:linear-gradient(90deg,#a9dbe6,#dacaf4 65%,#f0d3a1)}
+@keyframes bootCompanionBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.015)}}
+@media(prefers-reduced-motion:reduce){.bootCompanion{animation:none}}
+@media(max-height:600px){.bootScene{width:170px;height:180px;margin-bottom:12px}.bootCover h2{font-size:19px}}
+
+/* 启动阶段说明保持稳定高度，长等待时也能主动重载。 */
+.bootDetails{min-height:100px;width:min(80vw,320px);margin:12px 0 0;color:#becfe0;font-size:11px;line-height:1.9;letter-spacing:.02em;white-space:pre-line;text-align:left}
+.bootCover #bootRetry{margin-top:14px;background:#c7dbea12;border-color:#d5e6f044;color:#e4edf7}
+.bootCover #bootRetry:disabled{opacity:.6}
+@media(max-height:700px){.bootDetails{min-height:80px;line-height:1.7}.bootCover .bootScene{width:150px;height:160px;margin-bottom:12px}.bootCover h2{margin-bottom:20px}}
+
+/* Keep the parchment in the locked mobile canvas even when the physical viewport turns. */
+html[data-device="phone"] #petLoreDialog{
+ inset:0;margin:0;width:var(--phone-layout-width);height:var(--mobile-viewport-height,var(--phone-layout-height));max-width:none;max-height:none;box-sizing:border-box;overflow:hidden
+}
+html[data-device="phone"] #petLoreDialog .petLoreScroll{min-width:0;min-height:0;max-width:100%;box-sizing:border-box}
+html[data-device="phone"] #petLoreDialog .petLoreViewport{overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}
+html[data-device="phone"] #petLoreDialog .petLoreGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+
+/* One viewport-wide wallpaper covers content and the bottom safe area together. */
+html[data-device="phone"]{isolation:isolate;background:#263c58}
+html[data-device="phone"]::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background-color:#263c58;background-image:linear-gradient(180deg,#162c4666,#1c355477),url('/assets/icons/crypto/crystalbg.png?v=20261012-crystal43');background-position:center;background-size:cover;background-repeat:no-repeat}
+html[data-device="phone"][data-theme] body,html[data-device="phone"] body{background:transparent}
+html[data-device="phone"] body:not(.petManagerOpen)::before,html[data-device="phone"] body::after{display:none}
+html[data-device="phone"] #petHome{background:transparent}
+html[data-device="phone"]:has(#petWorldDialog[open])::before{background:radial-gradient(ellipse at 35% 25%,#29475a,#0c1725 75%)}
+/* A full-screen surface must cover the previous page, including keyboard gaps. */
+html[data-device="phone"] #petManager{background:#0c1627}
+html[data-device="phone"] body.petManagerOpen::before{display:block;background:#0c1627;opacity:1;mask-image:none;-webkit-mask-image:none;animation:none}
+html[data-device="phone"]:has(body.petManagerOpen)::before{background:#0c1627}
+/* The deck shares the viewport wallpaper; the previous home stays fully concealed. */
+html[data-device="phone"] #petDeck{background:transparent}
+html[data-device="phone"] body:has(#petDeck:not([hidden])) #petHome{visibility:hidden;pointer-events:none}
+
+/* Use the same live canvas height for every mobile page, including viewport recovery. */
+html[data-device="phone"] body{min-height:var(--phone-layout-height);box-sizing:border-box}
+html[data-device="phone"] :is(#petHome,#petDeck,#petManager){top:0;bottom:auto;height:var(--phone-layout-height);box-sizing:border-box}
+html[data-device="phone"] dialog.detailDialog{height:var(--phone-layout-height);box-sizing:border-box}
+
+/* 星海底图延伸到上下安全区，内容仍使用原来的可视高度。 */
+html[data-device="phone"]::before{top:calc(0px - env(safe-area-inset-top,0px));bottom:calc(0px - env(safe-area-inset-bottom,0px))}

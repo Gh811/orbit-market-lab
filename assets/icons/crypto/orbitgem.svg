@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 74" width="224" height="296" role="img" aria-label="星轨宝石徽章">
+ <defs>
+  <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff5cf"/><stop offset=".22" stop-color="#dcaa51"/><stop offset=".42" stop-color="#fff1ae"/><stop offset=".68" stop-color="#a56a28"/><stop offset="1" stop-color="#ffdc86"/></linearGradient>
+  <linearGradient id="stone" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#6c81b4"/><stop offset=".3" stop-color="#243e65"/><stop offset=".67" stop-color="#22274e"/><stop offset="1" stop-color="#141e33"/></linearGradient>
+  <linearGradient id="letters" x1="0" y1="0" x2=".8" y2="1"><stop stop-color="#f3ffff"/><stop offset=".19" stop-color="#b2fbff"/><stop offset=".43" stop-color="#55d8ef"/><stop offset=".57" stop-color="#d4c3ff"/><stop offset=".8" stop-color="#9587f4"/><stop offset="1" stop-color="#e6e5ff"/></linearGradient>
+  <clipPath id="glyphs"><text x="28" y="32" text-anchor="middle" font-family="PingFang SC,Noto Sans CJK SC,Microsoft YaHei,sans-serif" font-size="19" font-weight="900">星</text><text x="28" y="54" text-anchor="middle" font-family="PingFang SC,Noto Sans CJK SC,Microsoft YaHei,sans-serif" font-size="19" font-weight="900">轨</text></clipPath>
+ </defs>
+ <path d="M28 3 51 13 48 51 28 70 8 51 5 13Z" fill="url(#gold)" stroke="#edc779" stroke-width=".7"/>
+ <path d="M28 8 46 16 43 49 28 63 13 49 10 16Z" fill="url(#stone)" stroke="#ffe3a0" stroke-opacity=".65" stroke-width=".7"/>
+ <path d="m10 16 18 9 18-9-3 33-15-8-15 8Z" fill="#5770b1" opacity=".16"/>
+ <path d="M28 8v17L13 49l15-8 15 8-15 14" fill="#94c9e5" opacity=".1"/>
+ <path d="m10 16 18 9 18-9M13 49l15-8 15 8M28 8v17m0 16v22" fill="none" stroke="#b8d8ee" stroke-opacity=".22" stroke-width=".6"/>
+ <g font-family="PingFang SC,Noto Sans CJK SC,Microsoft YaHei,sans-serif" font-size="19" font-weight="900" text-anchor="middle" stroke-linejoin="round">
+  <g fill="#6b3f1d" stroke="#6b3f1d" stroke-width="1.5" transform="translate(0 1.1)"><text x="28" y="32">星</text><text x="28" y="54">轨</text></g>
+  <g fill="url(#letters)" stroke="url(#gold)" stroke-width=".9" paint-order="stroke fill"><text x="28" y="32">星</text><text x="28" y="54">轨</text></g>
+ </g>
+ <g clip-path="url(#glyphs)">
+  <path d="M14 12 31 14 20 31Z M21 34 42 17 39 34Z M13 38 30 35 22 54Z M26 56 42 37 43 57Z" fill="#efffff" opacity=".48"/>
+  <path d="M13 25 32 17 43 30 24 25Z M15 48 34 39 42 54 24 48Z" fill="#4675c7" opacity=".44"/>
+  <path d="m14 26 29-9M16 49l26-9M22 17l9 17M23 39l8 18" stroke="#f3ffff" stroke-opacity=".55" stroke-width=".55"/>
+ </g>
+ <path d="m43 14 .8 2.7 2.7.8-2.7.8-.8 2.7-.8-2.7-2.7-.8 2.7-.8Z" fill="#e6ffff"/>
+ <path d="m11 45 .5 1.6 1.6.5-1.6.5-.5 1.6-.5-1.6-1.6-.5 1.6-.5Z" fill="#e5dbff" opacity=".85"/>
+</svg>

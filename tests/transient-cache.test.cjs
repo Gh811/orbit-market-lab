@@ -1,0 +1,11 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const source=fs.readFileSync(require('node:path').join(__dirname,'../assets/app.js'),'utf8');
+const local=new Map([['market-data','old'],['account','keep']]),session=new Map();let hide,cleared=0;
+const storage=map=>({getItem:k=>map.get(k)||null,setItem:(k,v)=>map.set(k,v),removeItem:k=>map.delete(k)});
+const c={localStorage:storage(local),sessionStorage:storage(session),clearTimeout(){},candleSessionTimer:1,CANDLE_SESSION:'candles',window:{addEventListener:(event,fn)=>hide=fn,MarketData:{clearTransientCache:()=>cleared++}}};
+vm.createContext(c);vm.runInContext(source.slice(source.indexOf('const transientCacheKeys='),source.indexOf("const PROFILE_CACHE="))+'\nglobalThis.cache=transientCacheStorage;',c);
+c.cache.getItem('market-data');assert.equal(local.has('market-data'),false);assert.equal(local.get('account'),'keep');
+c.cache.setItem('market-data','warm');session.set('candles','warm');hide({persisted:true});assert.equal(session.get('market-data'),'warm');
+hide({persisted:false});assert.equal(session.size,0);assert.equal(cleared,1);assert.equal(local.get('account'),'keep');
+c.cache.setItem('market-data','late');assert.equal(session.size,0);
+console.log('Transient cache: migrated market keys only, back-forward page preserved, exit clears candles/data, late writes blocked, account kept: PASS');

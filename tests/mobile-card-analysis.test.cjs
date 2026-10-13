@@ -1,0 +1,52 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const strategy=require('../assets/strategy.js');
+const physics=require('../assets/touch.js');
+const source=fs.readFileSync(require('node:path').join(__dirname,'../assets/app.js'),'utf8');
+const classes=()=>({add(){},remove(){},toggle(){}});
+const field=()=>({textContent:'',innerHTML:'',setAttribute(){},style:{setProperty(){}},classList:classes()});
+const head=field(),note=field(),badge=field();
+const planPrices=()=>{const gain=field(),loss=field();return {classList:classes(),querySelector:s=>s==='.deckRatioGain'?gain:s==='.deckRatioLoss'?loss:gain,gain,loss}};
+const row=()=>{const value=field(),fill=field(),support=field(),resistance=field(),prices=planPrices();return {classList:classes(),querySelector:s=>s==='.deckRatioVal'?value:s==='.deckSupport b'?support:s==='.deckResistance b'?resistance:s==='.deckRatioPrices'?prices:fill,value,fill,support,resistance}};
+const long=row(),short=row(),probabilities=['up','flat','down'].map(direction=>{const value=field();return {dataset:{direction},style:{setProperty(){}},classList:classes(),querySelector:()=>value,value}});
+const ratio={dataset:{key:'swap:BTC',period:'15m'},classList:classes(),querySelector:s=>s==='.deckRatioHead>span'?head:s==='.deckSampleNote'?note:s==='.deckCallBadge'?badge:s.endsWith('long')?long:short,querySelectorAll:()=>probabilities};
+const canvas={dataset:{},classList:classes(),getContext:()=>({clearRect(){}})};
+const card={querySelector:s=>s==='.deckRatio'?ratio:canvas};
+const requests=[],pending=new Map(),asset={type:'swap',symbol:'BTC'};
+const ctx=vm.createContext({$:id=>id==='deckCard'?card:null,window:{MarketStrategy:strategy,MarketPhysics:physics},document:{hidden:false},navigator:{onLine:true},quotes:{},assetId:a=>a.type+':'+a.symbol,tf:'1d',deckMobileTf:'15m',deckChartMoved:[],deckMembers:()=>[asset],petDeckIndex:0,fmt:v=>Number.isFinite(v)?String(v):'—',miniChart(){},loadAsset(){},timeframeCache:new Map(),validBars:rows=>rows,mergeBars:(old,rows)=>rows.length?rows:old,rememberTimeframe:(a,p,rows,t)=>ctx.timeframeCache.set('swap:BTC|'+p,{rows,fetchedAt:t}),fetchTimeframe:(a,p)=>{requests.push(p);return new Promise(resolve=>pending.set(p,resolve))},localStorage:{getItem:()=>null,setItem(){}}});
+vm.runInContext(source.slice(source.indexOf('const ASHARE_PERIODS='),source.indexOf('function priceText(')),ctx);
+vm.runInContext(source.slice(source.indexOf('const tfMs='),source.indexOf('const assetId=')),ctx);
+vm.runInContext(source.slice(source.indexOf('const deckRatioCache='),source.indexOf('function updateDeckLive(){')),ctx);
+// Period state already declared by the block below; remove the temporary injected property.
+delete ctx.deckMobileTf;
+vm.runInContext(source.slice(source.indexOf('const DECK_PERIODS_STORE='),source.indexOf('let petNewsSerial=')),ctx);
+function bars(step,down=false){return Array.from({length:400},(_,i)=>{const c=100+(down?-1:1)*i*.05+Math.sin(i/8)*3;return {t:Date.now()-(401-i)*step,o:c-.1,h:c+1,l:c-1,c,v:100+i,confirmed:true}})}
+(async()=>{
+let analysisCalls=0;const originalPack=ctx.deckAnalysisPack;ctx.deckAnalysisPack=(...args)=>{analysisCalls++;return originalPack(...args)};
+const rows=bars(900000);const pack=ctx.deckAnalysisPack(asset,'15m',rows);const desktop=strategy.analyzeStrategy(rows,rows.at(-1).c);
+assert.deepEqual(pack.probabilities,desktop.probabilities);assert.equal(pack.long,desktop.levels.long);assert.equal(pack.short,desktop.levels.short);assert.equal(pack.support,desktop.levels.support);assert.equal(pack.resistance,desktop.levels.resistance);assert.equal(pack.call,strategy.tradeCall(desktop).direction);
+const unfinished=[...rows,{...rows.at(-1),t:Date.now(),c:1000,confirmed:false}];assert.equal(ctx.completedCount(unfinished,'15m'),400);assert.equal(ctx.deckAnalysisPack(asset,'15m',unfinished).samples,pack.samples);
+assert.equal(ctx.deckAnalysisPack(asset,'1h',rows.slice(0,20)).ready,false);
+ctx.quotes['swap:BTC']={p:150,t:unfinished.at(-1).t+1000};
+const live=ctx.deckLiveSparkRows(unfinished,'swap:BTC','15m');assert.equal(live.at(-1).c,150);assert.equal(unfinished.at(-1).c,1000);delete ctx.quotes['swap:BTC'];
+ctx.chooseDeckPeriod('15m');ctx.deckEnsureRatio(asset,'swap:BTC');assert.deepEqual(requests,['15m']);assert.equal(ctx.tf,'1d');assert.equal(canvas.dataset.period,'15m');
+ctx.chooseDeckPeriod('1h');assert.deepEqual(requests,['15m','1h']);assert.equal(ratio.dataset.period,'1h');
+pending.get('1h')({candles:bars(3600000,true)});await new Promise(setImmediate);assert.equal(head.textContent,'方向概率 · 1小时');assert.equal(canvas.dataset.period,'1h');const displayed=probabilities.map(p=>p.value.textContent);
+pending.get('15m')({candles:rows});await new Promise(setImmediate);assert.equal(head.textContent,'方向概率 · 1小时');assert.deepEqual(probabilities.map(p=>p.value.textContent),displayed);assert.equal(canvas.dataset.period,'1h');
+ctx.chooseDeckPeriod('15m');assert.deepEqual(requests,['15m','1h']);assert.equal(head.textContent,'方向概率 · 15分');assert.deepEqual(probabilities.map(p=>p.value.textContent),physics.percentages(desktop.probabilities).map(v=>v+'%'));
+ctx.deckChartMoved.push(1);ctx.chooseDeckPeriod('4h');assert.equal(ctx.tf,'4h');pending.get('4h')({candles:rows.slice(0,20)});await new Promise(setImmediate);assert.equal(long.value.textContent,'—');assert.deepEqual(probabilities.map(p=>p.value.textContent),['—','—','—']);
+assert.equal(source.slice(source.indexOf('function buildDeckCard(){'),source.indexOf('const deckRatioCache=')).includes('deckCardPeriods'),true);
+assert.equal(source.slice(source.indexOf('function buildDeckCard(){'),source.indexOf('function updateDeckLive(){')).includes('同类历史'),false);
+delete ctx.window.MarketPhysics;
+assert.deepEqual(Array.from(ctx.deckPercentages(desktop.probabilities)),physics.percentages(desktop.probabilities));
+assert.equal(ctx.deckPercentages(undefined),null);
+ratio.dataset.period='15m';
+for(const [rr,expected] of [[1,'50.0%'],[1.01,'50.2%'],[3,'75.0%'],[0,'0.0%']]){ctx.deckApplyRatio('swap:BTC',{period:'15m',long:rr,short:rr});assert.equal(long.fill.style.width,expected);assert.equal(short.fill.style.width,expected)}
+ctx.deckApplyRatio('swap:BTC',{period:'15m'});assert.equal(long.fill.style.width,'0%');assert.equal(long.value.textContent,'—');
+ratio.dataset.period='15m';assert.doesNotThrow(()=>ctx.deckApplyRatio('swap:BTC',pack));
+assert.deepEqual(probabilities.map(p=>p.value.textContent),physics.percentages(desktop.probabilities).map(v=>v+'%'));
+vm.runInContext("deckMobileTf='15m'",ctx);ctx.timeframeCache.set('swap:BTC|15m',{rows,fetchedAt:Date.now()});vm.runInContext("delete deckRatioCache['swap:BTC|15m']",ctx);const callsBefore=analysisCalls;ctx.deckEnsureRatio(asset,'swap:BTC');await new Promise(setImmediate);assert.equal(analysisCalls-callsBefore,1,'fresh cached bars are analyzed once, not twice per card');
+const css=fs.readFileSync(require('node:path').join(__dirname,'../assets/styles.css'),'utf8');
+const horizontal=css.slice(css.indexOf('/* Compact mobile directions'));
+assert.match(horizontal,/grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);assert.match(horizontal,/grid-template-rows:14px 24px/);assert.match(horizontal,/animation:deckProbabilityBreath/);assert.match(horizontal,/width:var\(--prob,0%\);height:100%/);
+console.log('PASS: desktop model parity, completed bars, insufficient samples, period-specific requests/caches, deduplication, late response protection, mini chart and analysis share period, card-only selection preserves desktop timeframe.');
+})().catch(e=>{console.error(e);process.exitCode=1});

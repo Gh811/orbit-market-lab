@@ -1,0 +1,13 @@
+.market_accounts.sqlite3*
+.market_data.sqlite3*
+.asset_logo_cache/
+__pycache__/
+tests/__pycache__/
+
+# Local-only runtime data and credentials
+.env
+.env.*
+*.log
+*.sqlite3*
+.DS_Store
+artifacts/

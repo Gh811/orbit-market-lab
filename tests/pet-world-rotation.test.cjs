@@ -1,0 +1,16 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const source=fs.readFileSync(require('node:path').join(__dirname,'../assets/app.js'),'utf8');
+const values={},handlers={},cl=new Set(),buttons=[{dataset:{worldTurn:'-45'}},{dataset:{worldTurn:'front'}},{dataset:{worldTurn:'45'}}];
+let captures=0,releases=0;
+const display={style:{},classList:{add:k=>cl.add(k),remove:k=>cl.delete(k)},setAttribute(){},addEventListener:(k,v)=>handlers[k]=v,setPointerCapture:()=>captures++,releasePointerCapture:()=>releases++};
+const dialog={dataset:{},style:{setProperty:(k,v)=>values[k]=v},querySelector:()=>display,querySelectorAll:()=>buttons,addEventListener:(k,v)=>handlers['dialog:'+k]=v};
+let queued=null;const ctx={requestAnimationFrame:fn=>{queued=fn;return 1},cancelAnimationFrame:()=>{queued=null}};const flush=()=>{const fn=queued;queued=null;fn?.()};vm.createContext(ctx);vm.runInContext(source.slice(source.indexOf('const petTurntableLoads='),source.indexOf('function openPetWorld(')),ctx);
+ctx.setupPetWorldRotation(dialog);ctx.setPetWorldAngle(dialog,0);
+handlers.pointerdown({isPrimary:true,button:0,pointerId:1,clientX:100});handlers.pointermove({pointerId:2,clientX:150});assert.equal(dialog.dataset.viewAngle,'0','ignore another pointer');handlers.pointermove({pointerId:1,clientX:170});handlers.pointermove({pointerId:1,clientX:180});assert.equal(dialog.dataset.viewAngle,'0','coalesce moves until paint');flush();assert.equal(dialog.dataset.viewAngle,'96');assert.ok(cl.has('petWorldTurning'));
+handlers.pointermove({pointerId:1,clientX:800});flush();assert.equal(dialog.dataset.viewAngle,'840','full turns continue past 360 degrees');handlers.pointercancel({pointerId:1});handlers.pointermove({pointerId:1,clientX:0});assert.equal(dialog.dataset.viewAngle,'840','cancel stops dragging');assert.equal(cl.size,0);assert.equal(captures,1);assert.equal(releases,1);
+ctx.setPetWorldAngle(dialog,0);let prevented=false;handlers.keydown({key:'ArrowRight',preventDefault(){prevented=true}});assert.equal(dialog.dataset.viewAngle,'45');assert.ok(prevented);handlers.keydown({key:'Home',preventDefault(){}});assert.equal(dialog.dataset.viewAngle,'0');
+handlers.pointerdown({isPrimary:true,button:0,pointerId:4,clientX:100});handlers['dialog:close']();handlers.pointermove({pointerId:4,clientX:200});assert.equal(dialog.dataset.viewAngle,'0','closing exhibit cancels interaction');
+assert.equal(values['--world-yaw'],undefined,'a flat illustration must never be mirrored by rotateY');ctx.setPetWorldAngle(dialog,180);assert.equal(dialog.dataset.viewFrame,'8','the back is its own sprite');ctx.setPetWorldAngle(dialog,360);assert.equal(dialog.dataset.viewFrame,'0');ctx.setPetWorldAngle(dialog,-45);assert.equal(dialog.dataset.viewFrame,'14');ctx.setPetWorldAngle(dialog,0);assert.equal(values['--world-light-x'],'50.00%');
+assert.equal(dialog.startTurnPreview,undefined,'opening a character never creates an automatic turn');
+assert.doesNotMatch(source.slice(source.indexOf('function setupPetWorldRotation('),source.indexOf('function openPetWorld(')),/setInterval|setTimeout|startTurnPreview/);
+console.log('Manual rotation PASS: pointer ownership, full turns, distinct back, cancel/close, keyboard and no automatic preview');

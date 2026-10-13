@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-orbit-entry>
+ <head>
+  <meta charset="utf-8"/>
+  <style data-entry-guard>
+   html[data-orbit-entry]{background:#263c58}
+   html[data-orbit-entry] body{visibility:hidden}
+   html[data-orbit-entry].entryStylesReady body{visibility:visible}
+  </style>
+  <meta content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=overlays-content" name="viewport"/>
+  <title>
+   星轨
+  </title>
+  <link rel="icon" type="image/svg+xml" href="/assets/icon.svg"/>
+  <link rel="apple-touch-icon" href="/assets/icon.png"/>
+  <link rel="manifest" href="/assets/site.webmanifest?v=20261012-native-portrait40"/>
+  <meta name="apple-mobile-web-app-title" content="星轨"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="theme-color" content="#101d2a"/>
+  <link rel="preload" as="image" href="/assets/icons/crypto/spacerabbit.png?v=20261012-crystal43" fetchpriority="high"/>
+  <script src="/assets/theme.js?v=20261013-live-mobile-height96"></script>
+  <link data-entry-critical rel="stylesheet" href="/assets/mobile-pages.css?v=20261013-market-identity-fix82"/>
+  <link data-entry-style href="/assets/styles.css?v=20261013-uniform-summary83" rel="stylesheet"/>
+ </head>
+ <body class="authLocked accountOverlay">
+  <section id="bootCover" class="bootCover" aria-label="星轨正在加载">
+   <div class="bootScene" aria-hidden="true">
+    <span class="bootHalo"></span><span class="bootPlinth"></span>
+    <img class="bootCompanion" src="/assets/icons/crypto/spacerabbit.png?v=20261012-crystal43" width="384" height="384" alt="" loading="eager" decoding="async" fetchpriority="high"/>
+   </div>
+   <p class="bootEyebrow">ORBIT · 星轨</p><h2>你的星际看盘伙伴</h2>
+   <div id="bootProgress" class="bootProgress" role="progressbar" aria-label="页面准备进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="6"><span id="bootProgressFill"></span></div>
+   <p id="bootStatus" class="bootStatus" role="status">正在准备星轨…</p>
+   <p id="bootDetails" class="bootDetails">初始化页面与移动端环境</p>
+   <button id="bootRetry" type="button">重新加载</button>
+  </section>
+  <div class="shell" data-entry-shell hidden>
+   <header class="mast">
+    <div>
+     <div class="overline">
+      ORBIT / LIVE SIGNAL
+     </div>
+     <h1>
+      星轨
+     </h1>
+     <p>
+      实时价格 · 结构信号 · 历史轨迹
+     </p>
+    </div>
+    <div class="mastright">
+     <button class="ghost mobileMoreButton" id="mobileMoreButton" type="button">更多</button>
+     <button class="ghost accountButton" id="accountButton" type="button">登录 / 注册</button>
+     <span class="status" id="connection">
+      连接中
+     </span>
+     <button class="ghost" id="notify" hidden>
+      开启通知
+     </button>
+     <button class="ghost" id="alertsButton" type="button" hidden>提醒记录</button>
+    </div>
+   </header>
+   <main class="layout">
+    <aside class="sidebar">
+     <section class="panel">
+      <div class="panelhead">
+       <h2>
+        自选资产
+       </h2>
+       <div class="watchHeadTools"><button class="ghost mobileAddButton" id="mobileAddButton" type="button" aria-label="搜索并添加标的">🔍</button><button aria-pressed="false" class="reorderToggle" id="toggleReorder" type="button">调整位置</button></div>
+      </div>
+      <form class="add" id="addForm">
+       <div class="searchWrap">
+        <input aria-label="搜索股票或加密标的" autocomplete="off" autocapitalize="off" spellcheck="false" id="symbol" maxlength="32" placeholder="搜索代码、名称或中文别名" required=""/>
+        <div class="suggestions" hidden="" id="suggestions" role="listbox">
+        </div>
+       </div>
+       <select aria-label="加入分组" id="addGroup">
+       </select>
+       <button class="accent" type="submit">
+        添加
+       </button>
+       <div class="selectedAssetPreview" id="selectedAssetPreview" hidden aria-live="polite"></div>
+      </form>
+      <div class="error" id="addError">
+      </div>
+      <div class="groupBar" aria-label="自选分组">
+       <div class="groupScrollRail" id="groupScrollRail" hidden aria-hidden="true"><span class="groupScrollThumb" id="groupScrollThumb"></span></div>
+       <div class="groupTabs" id="groupTabs" role="tablist"></div>
+       <button class="groupIconButton" id="groupManageButton" type="button" aria-label="管理分组" title="管理分组">⚙︎</button>
+      </div>
+      <div class="watchlist" id="watchlist">
+      </div>
+     </section>
+     <div class="hiddenAlertsSettings" hidden>
+      <summary>
+       <span class="compactIcon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M6 17h12l-1.4-2.1V10a4.6 4.6 0 0 0-9.2 0v4.9L6 17Z"/><path d="M10 20h4"/></svg></span>
+       <span class="compactText"><strong>提醒规则</strong><small>目标价与短时波动</small></span>
+       <span class="compactChevron" aria-hidden="true"></span>
+      </summary>
+      <div class="detailInner">
+      <div class="panelhead">
+       <h2>
+        提醒规则
+       </h2>
+      </div>
+      <label>
+       当前资产目标价（USDT）
+       <input id="target" min="0" placeholder="留空则关闭" step="any" type="number"/>
+      </label>
+      <label>
+       短时波动阈值
+       <select id="swing">
+        <option value="0.5">
+         0.5%
+        </option>
+        <option value="1">
+         1%
+        </option>
+        <option value="2">
+         2%
+        </option>
+        <option value="3">
+         3%
+        </option>
+        <option value="5">
+         5%
+        </option>
+       </select>
+      </label>
+      <p class="muted small">
+       越过目标价或 5 分钟波动超阈值时提醒。页面需保持打开。
+      </p>
+     </div>
+     </div>
+     <section class="panel sidebarNews" aria-label="相关新闻">
+      <div class="panelhead"><h2>相关新闻</h2><span id="newsSubject">—</span><a id="newsLink" href="/news.html">查看全部 ↗</a></div>
+      <div class="sidebarNewsList" id="newsPreview" aria-live="polite"><p class="sidebarNewsEmpty">选择标的后显示相关新闻。</p></div>
+     </section>
+    </aside>
+    <div class="workspace">
+     <section class="panel settings">
+      <div class="panelhead">
+       <h2>
+        显示设置
+       </h2>
+      </div>
+      <label class="schemeControl">
+       <span>涨跌配色</span>
+       <span class="selectShell"><select id="colorScheme">
+        <option value="redUp">
+         红涨绿跌
+        </option>
+        <option value="greenUp">
+         绿涨红跌
+        </option>
+       </select></span>
+      </label>
+      <label class="check">
+       <input checked="" id="showVolume" type="checkbox"/>
+       成交额（USDT）
+      </label>
+      <label class="check">
+       <input checked="" id="showLevels" type="checkbox"/>
+       支撑 / 压力
+      </label>
+      <label class="check">
+       <input checked="" id="showFib" type="checkbox"/>
+       斐波那契回撤
+      </label>
+      <label class="check">
+       <input checked="" id="showMA" type="checkbox"/>
+       MA 5 / MA 10 / MA 20
+      </label>
+     </section>
+     <section class="hero panel">
+      <div class="assetHeading">
+       <div class="heroIdentity">
+        <button class="heroLogoButton" id="heroLogo" type="button" aria-label="查看当前标的资料" title="点击查看标的资料"></button>
+        <div>
+         <div class="assetTitle"><div class="assetLabel" id="assetLabel">选择资产</div><span class="perpetualBadge" id="perpetualBadge" hidden>永续</span></div>
+         <div class="muted small" id="assetMeta">
+          等待行情
+         </div>
+        </div>
+       </div>
+       <div class="heroPrice">
+        <strong id="lastPrice">
+         —
+        </strong>
+        <span id="priceChange">
+         —
+        </span>
+       </div>
+      </div>
+      <div class="toolbar">
+       <div aria-label="K 线周期" class="segmented" id="timeframes">
+        <button data-tf="1m">
+         1分
+        </button>
+        <button data-tf="5m">
+         5分
+        </button>
+        <button data-tf="15m">
+         15分
+        </button>
+        <button data-tf="1h">
+         1时
+        </button>
+        <button data-tf="2h">
+         2时
+        </button>
+        <button data-tf="4h">
+         4时
+        </button>
+        <button data-tf="6h">
+         6时
+        </button>
+        <button data-tf="1d">
+         日
+        </button>
+        <button data-tf="2d">
+         2日
+        </button>
+        <button data-tf="1w">
+         周
+        </button>
+        <button data-tf="1M">
+         月
+        </button>
+       </div>
+      </div>
+      <section class="strategyPanel" id="strategyPanel" aria-label="当前结构分析">
+       <div class="strategyTop"><div><span class="strategyEyebrow">当前结构分析</span><h3 id="strategyTitle">等待历史数据</h3></div><span class="strategyStamp" id="strategyStamp">—</span></div>
+       <p class="strategySummary" id="strategySummary">加载后显示上涨、下跌、横盘的历史同类结构频率与支撑压力位盈亏比。</p>
+       <div class="maOrder" id="strategyMAOrder" aria-live="polite">均线排列：等待历史数据</div>
+       <div class="strategyGrid" id="strategyGrid">
+        <div class="probabilityCard long" id="probLong"><span>做多 · 上涨</span><strong id="strategyUp">—</strong></div>
+        <div class="probabilityCard watch active" id="probWatch"><span>观望 · 横盘</span><strong id="strategyFlat">—</strong></div>
+        <div class="probabilityCard short" id="probShort"><span>做空 · 下跌</span><strong id="strategyDown">—</strong></div>
+        <div><span>向上理论毛盈亏比</span><strong id="strategyLongRR">—</strong></div>
+        <div><span>向下理论毛盈亏比</span><strong id="strategyShortRR">—</strong></div>
+       </div>
+       <div class="strategyCall watch" id="strategyCall" aria-live="polite"><strong id="strategyCallTitle">观望</strong><span id="strategyCallDetail">等待足够的历史数据后评估方向与盈亏比。</span><p class="strategyCallConclusion" id="strategyCallConclusion">结论：暂不判断方向。</p></div>
+       <div class="strategyPlans" aria-label="止盈止损参考位">
+        <div class="strategyPlan long"><strong>向上观察</strong><div id="strategyLongPlan" class="planContents">止盈、止损：等待历史数据</div></div>
+        <div class="strategyPlan short"><strong>向下观察</strong><div id="strategyShortPlan" class="planContents">止盈、止损：等待历史数据</div></div>
+       </div>
+       <details class="strategyMethod"><summary>统计依据</summary><p class="strategyBasis" id="strategyBasis">仅使用已完成的 K 线；统计不是未来概率。</p></details>
+      </section>
+      <div class="chartStatusRow">
+       <div class="chartStatus" id="chartStatus">正在加载 K 线…</div>
+       <div class="chartActions" role="group" aria-label="K 线图操作">
+        <button class="historyMore" id="historyMore" type="button">载入更早</button>
+        <button class="ghost" id="chartLatest" type="button">回到最新</button>
+        <button class="ghost" id="reload" type="button">刷新</button>
+        <button class="chartExpand ghost" id="chartExpand" type="button" aria-pressed="false" title="放大 K 线">⤢ 放大图表</button>
+       </div>
+      </div>
+      <div class="chartBox">
+       <div class="chartMetrics" id="chartMetrics" aria-live="off"></div>
+       <canvas aria-label="K 线和成交额图" id="chart">
+       </canvas>
+       <div class="chartCrosshair" hidden="" id="chartCrosshair"></div>
+       <div class="chartTip" hidden="" id="chartTip">
+       </div>
+      </div>
+      <details class="insightDisclosure">
+       <summary>图表解读与后续验证 <span>点击展开</span></summary>
+      <section class="candleInsight neutral" id="candleInsight" aria-label="K 线自然语言解读">
+       <div class="insightHead">
+        <div><span class="insightEyebrow" id="insightEyebrow">图表解读 · 移动到 K 线查看</span><h3 id="insightTitle">正在等待历史数据</h3></div>
+        <time id="insightTime"></time>
+       </div>
+       <p class="insightSummary" id="insightSummary">加载后会结合价格、成交额、均线和此前关键价位进行解读。</p>
+       <div class="insightMeasures" id="insightMeasures"></div>
+       <ul class="insightEvidence" id="insightEvidence"></ul>
+       <p class="insightFocus" id="insightFocus"></p>
+       <p class="insightBasis" id="insightBasis"></p>
+       <div class="insightAudit" aria-label="后续走势验证">
+        <div class="insightAuditHead"><span>后续验证</span><strong id="auditVerdict">等待后续 K 线</strong></div>
+        <p id="auditOutcome">这段验证独立于上方的原始解读；后续五根已完成 K 线出现后才公布结果。</p>
+        <p id="auditReliability"></p>
+       </div>
+      </section>
+      </details>
+      <div class="legend">
+       <span>
+        <i class="swatch ma5">
+        </i>
+        MA5
+       </span>
+       <span>
+        <i class="swatch ma10">
+        </i>
+        MA10
+       </span>
+       <span>
+        <i class="swatch ma20">
+        </i>
+        MA20
+       </span>
+       <span>
+        <i class="swatch support">
+        </i>
+        支撑
+       </span>
+       <span>
+        <i class="swatch resistance">
+        </i>
+        压力
+       </span>
+       <span>
+        <i class="swatch fib">
+        </i>
+        斐波那契
+       </span>
+      </div>
+     </section>
+    </div>
+   </main>
+   <dialog class="detailDialog groupManageDialog" id="groupManageDialog" aria-label="管理分组">
+    <div class="groupManagePanel">
+     <div class="watchActionHead"><strong id="groupDialogTitle">管理分组</strong><button class="dialogClose" data-close="groupManageDialog" type="button" aria-label="关闭"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg></button></div>
+     <button class="groupCreateFromManage" id="groupCreateFromManage" type="button">＋ 新建分组</button>
+     <form class="groupForm" id="groupForm">
+      <div class="groupCreateRow"><input aria-label="新分组名称" id="groupName" placeholder="新分组名称"/><button class="accent" type="submit">创建</button></div>
+      <fieldset class="groupSeedField"><legend>选择至少一个标的加入</legend><div class="groupSeedSearchWrap"><input id="groupSeedSearch" class="groupSeedSearch" type="search" autocomplete="off" aria-label="搜索要加入新分组的标的" aria-controls="groupSeedSuggestions" aria-expanded="false" placeholder="搜索代码、名称或中文别名"/><div class="suggestions groupSeedSuggestions" id="groupSeedSuggestions" role="listbox" hidden></div></div><div class="groupSeedSelected" id="groupSeedSelected" aria-live="polite"></div><div class="groupSeedResultTitle" id="groupSeedResultTitle">可选标的</div><div class="groupSeedList" id="groupSeedList"></div></fieldset>
+     </form>
+     <div class="error" id="groupError"></div>
+     <div class="groupManageList" id="groupManageList"></div>
+   </div>
+  </dialog>
+   <dialog class="detailDialog groupConfirmDialog" id="groupConfirmDialog" aria-labelledby="groupConfirmTitle">
+    <div class="groupConfirmPanel">
+     <h2 id="groupConfirmTitle"></h2>
+     <p id="groupConfirmMessage"></p>
+     <label class="groupConfirmMove" id="groupConfirmMove" hidden><input id="groupConfirmMoveCheck" type="checkbox" checked/><span>标的移入自选</span></label>
+     <p class="groupConfirmError" id="groupConfirmError" role="alert"></p>
+     <div class="groupConfirmActions"><button type="button" id="groupConfirmCancel">取消</button><button type="button" id="groupConfirmAccept">确认</button></div>
+    </div>
+   </dialog>
+   <dialog class="detailDialog watchActionDialog" id="watchActionDialog" aria-label="自选操作">
+    <div class="watchActionPanel"><div class="watchActionHead"><strong id="watchActionTitle">自选操作</strong><button class="dialogClose" data-close="watchActionDialog" type="button" aria-label="关闭"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg></button></div><button id="watchPin" type="button">置顶</button><button id="watchFirst" type="button">移动到最前</button><button id="watchLast" type="button">移动到最后</button><button id="watchDelete" class="danger" type="button">删除自选</button></div>
+   </dialog>
+   <dialog class="detailDialog mobileMoreDialog" id="mobileMoreDialog" aria-label="更多功能">
+    <div class="mobileMoreHead"><strong>更多功能</strong><button class="dialogClose" data-close="mobileMoreDialog" type="button" aria-label="关闭"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg></button></div>
+    <button class="accent petHomeEntry" id="petHomeEntry" type="button" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M15.5 5 8.5 12 15.5 19"/></svg></button>
+    <div class="mobileMoreBody" id="mobileMoreBody"></div>
+   </dialog>
+   <dialog class="detailDialog authDialog" id="authDialog" aria-label="账户登录与注册">
+    <div class="authPanel">
+     <div class="authTop"><div><small>ORBIT ACCOUNT</small><h2 id="authTitle">登录星轨</h2></div><button class="dialogClose" data-close="authDialog" type="button" aria-label="关闭"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg></button></div>
+     <div class="authTabs" id="authTabs"><button class="active" data-auth-mode="login" type="button">登录</button><button data-auth-mode="register" type="button">创建用户</button></div>
+     <form id="authForm" class="authForm">
+      <label>用户名<input id="authUsername" autocomplete="username" maxlength="32" minlength="3" pattern="[A-Za-z0-9_]+" required placeholder="英文字母、数字或下划线"/></label>
+      <label>密码<input id="authPassword" autocomplete="current-password" minlength="1" maxlength="128" required type="password" placeholder="输入密码"/></label>
+      <p class="authError" id="authError" role="alert"></p>
+      <button class="accent authSubmit" id="authSubmit" type="submit">登录</button>
+     </form>
+     <div class="authSigned" id="authSigned" hidden>
+      <header class="mobilePasswordHeading"><button type="button" data-close="authDialog" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.5 5 8.5 12 15.5 19"/></svg></button><strong>修改密码</strong></header>
+      <p>用户名：<strong id="authSignedName"></strong></p>
+      <p>用户 ID：<code id="accountId">—</code></p>
+      <details id="accountAvatarDetails" hidden><summary>修改个人形象</summary>
+       <p>当前形象：<strong id="accountAvatarCurrent"></strong></p>
+       <div id="accountAvatarChoices" class="authPetChoices" role="group" aria-label="选择个人形象"></div>
+       <p id="accountAvatarLimit" role="status"></p>
+       <p id="accountAvatarError" class="authError" role="status"></p>
+       <button id="accountAvatarSave" class="accent authSubmit" type="button">保存个人形象</button>
+      </details>
+      <details class="passwordDetails" id="passwordDetails"><summary>修改密码</summary>
+       <form class="authForm" id="passwordForm">
+        <label>当前密码<input id="currentPassword" autocomplete="current-password" maxlength="128" required type="password"/></label>
+        <label>新密码<input id="newPassword" autocomplete="new-password" minlength="8" maxlength="128" required type="password" placeholder="至少 8 位，包含字母和数字"/></label>
+        <label>确认新密码<input id="confirmPassword" autocomplete="new-password" minlength="8" maxlength="128" required type="password"/></label>
+        <p class="authError" id="passwordError" role="alert"></p>
+        <button class="accent authSubmit" id="passwordSubmit" type="submit">保存新密码</button>
+       </form>
+      </details>
+      <p class="authError" id="authSignedError" role="alert"></p>
+      <button class="ghost" id="authLogout" type="button">退出登录</button>
+     </div>
+    </div>
+   </dialog>
+   <dialog class="detailDialog" id="infoDialog" aria-label="标的资料">
+    <section class="panel infoPanel">
+      <div class="panelhead">
+       <h2>
+        标的资料
+       </h2>
+       <span id="infoSource">
+        正在获取
+       </span>
+       <button class="dialogClose" data-close="infoDialog" type="button" aria-label="关闭标的资料"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+      </div>
+      <div class="infoBody">
+       <div class="muted small" id="assetInfo">
+        选择标的后显示公司或币种资料。
+       </div>
+      </div>
+     </section>
+   </dialog>
+   <dialog class="detailDialog alertsDialog" id="alertsDialog" aria-label="提醒记录">
+      <section class="panel updates">
+       <div class="panelhead">
+        <h2>
+         策略与行情提醒
+        </h2>
+        <button class="dialogClose" data-close="alertsDialog" type="button" aria-label="关闭提醒记录"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+       </div>
+       <div class="feed" id="feed">
+       </div>
+      </section>
+   </dialog>
+  </div>
+  <div hidden id="petHome" aria-label="宠物主屏"></div>
+  <div hidden id="petDeck" aria-label="分组卡组"></div>
+  <script defer="" src="/assets/insight.js"></script>
+  <script defer="" src="/assets/strategy.js"></script>
+  <script defer="" src="/assets/gesture.js"></script>
+  <script defer="" src="/assets/audit.js"></script>
+  <script defer src="/assets/data.js?v=20261012-card-cache37"></script>
+  <script defer src="/assets/touch.js?v=20261012-audio-resume39"></script>
+  <script defer src="/assets/mobile-pages.js?v=20261012-core-back37"></script>
+  <script defer="" src="/assets/app.js?v=20261013-uniform-summary83">
+  </script>
+ </body>
+</html>

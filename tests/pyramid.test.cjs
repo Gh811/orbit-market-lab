@@ -1,0 +1,9 @@
+const assert=require('node:assert/strict'),{run}=require('../backtest/pyramid.cjs');
+const rows=Array.from({length:75},(_,i)=>{const c=i<=35?100:100+(i-35)*2;return{t:i*60000,o:i<=36?100:100+(i-36)*2,h:c+1,l:Math.min(c,i<=36?100:100+(i-36)*2)-1,c,confirmed:true}});
+const cfg={warmup:35,interval:60000,maxHold:1000,risk:.005,fee:.001,slippage:.0002};const history=[];
+const result=run(rows,cfg,h=>{history.push(h.at(-1).t);return {direction:'up',stop:h.at(-1).c-5,target:null,trailDistance:5}});
+assert(result.pyramiding.additions>0);assert.equal(result.trades.length,3);assert(result.pyramiding.maxExposure<=1+1e-10);assert(result.pyramiding.maxEntryRisk<=.005+1e-12);assert(result.trades.every(t=>t.entryTime>t.signalTime));assert(result.trades[1].entryTime-result.trades[0].entryTime>=6*60000);assert(Math.abs(result.summary.finalCapital-(10000+result.trades.reduce((a,b)=>a+b.net,0)))<1e-8);
+const flat=rows.map(b=>({...b,o:100,c:100,h:101,l:99}));const noAdds=run(flat,cfg,()=>({direction:'up',stop:95,target:null,trailDistance:5}));assert.equal(noAdds.pyramiding.additions,0);assert.equal(noAdds.trades.length,1);
+const gap=rows.map(b=>({...b}));for(let i=50;i<gap.length;i++)gap[i].t+=60000;const g=run(gap,cfg,h=>({direction:'up',stop:h.at(-1).c-5,target:null,trailDistance:5}));assert.equal(g.gaps,1);assert(g.trades.some(t=>t.reason==='数据缺口前平仓'));
+const mirror=rows.map(b=>({...b,o:200-b.o,c:200-b.c,h:200-b.l,l:200-b.h}));const short=run(mirror,cfg,h=>({direction:'down',stop:h.at(-1).c+5,target:null,trailDistance:5}));assert(short.pyramiding.additions>0);assert(short.pyramiding.maxEntryRisk<=.005+1e-12);assert(short.pyramiding.maxExposure<=1+1e-10);
+console.log('Protected pyramiding PASS: no losing-position adds, exact cost-inclusive risk budget, funded nominal cap, next-bar execution, cooldown, long/short and gap exits');
