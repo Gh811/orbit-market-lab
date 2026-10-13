@@ -37,3 +37,10 @@ for(const effects of [undefined,{},require('../assets/touch.js')]){
   assert.equal(nodes.deckCount.textContent,'1 / 2');
 }
 console.log('Mobile cards render full content and neighbors with missing, old, and current effects modules: PASS');
+
+for(const type of ['swap','ashare']){
+ asset.type=type;asset.symbol=type==='ashare'?'SZ002384':'BTC';ctx.buildDeckCard();
+ const rendered=descendants(nodes.deckCard);
+ assert.deepEqual(rendered.filter(n=>n.className==='deckRatioDir').map(n=>n.textContent),['↑ 上行','↓ 下行']);
+ assert.ok(!rendered.some(n=>/上行参考|下行参考/.test(n.textContent)));
+}

@@ -18,7 +18,7 @@ class ProgressiveProfilesTest(unittest.TestCase):
         self.assertIn('茅台酱香系列酒',reopened.summary('ashare','SH600519')[0])
         self.assertEqual(reopened.website('ashare','SH600519'),'https://www.moutai.com.cn/')
         self.assertIsNotNone(reopened.logo('SH600519','ashare'))
-        self.assertIsNotNone(reopened.read(MarketStore.key('ashare','info-v2','SH600519')))
+        self.assertIsNotNone(reopened.read(MarketStore.key('ashare','info-v3','SH600519')))
     def test_new_company_exact_profile_drives_icon_and_persistence(self):
         info={'type':'ashare','symbol':'SZ000001','name':'平安银行','pair':'SZ000001','quote':'CNY','summary':'平安银行提供银行业务。','website':'https://bank.example.com/','source':'已核对公司资料'}
         image=(server.ROOT/'assets/icons/brand/sh600519.png').read_bytes()
@@ -45,11 +45,11 @@ class ProgressiveProfilesTest(unittest.TestCase):
             with self.assertRaises(ValueError):asset_brand.public_url('https://company.example/icon.png','company.example')
     def test_incomplete_refresh_keeps_previous_company_description(self):
         old={'type':'ashare','symbol':'SZ000001','pair':'SZ000001','quote':'CNY','summary':'已经核实的银行业务简介。','website':'https://bank.example.com/','source':'公司资料'}
-        self.store.write(MarketStore.key('ashare','info-v2','SZ000001'),old)
+        self.store.write(MarketStore.key('ashare','info-v3','SZ000001'),old)
         partial={**old,'summary':'平安银行是A股。','website':'','incomplete':True}
         with patch.object(server.ashare_market,'info',return_value=partial):row=server.verified_ashare_profile('SZ000001')
         self.assertEqual(row['summary'],old['summary']);self.assertEqual(row['website'],old['website']);self.assertTrue(row['incomplete'])
-        self.store.write(MarketStore.key('ashare','info-v2','SZ000001'),row)
+        self.store.write(MarketStore.key('ashare','info-v3','SZ000001'),row)
         with patch.object(server.ashare_market,'info',return_value=partial):again=server.verified_ashare_profile('SZ000001')
         self.assertEqual(again['summary'],old['summary'],'consecutive incomplete refreshes retain the description')
 

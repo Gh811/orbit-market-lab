@@ -150,7 +150,7 @@ SUMMARIES = {
     ("crypto", "GLM"): ("Golem 是一个开源的去中心化算力市场，把计算任务拆分后交由网络中设备的闲置算力（含 GPU）完成，用户以 GLM 代币换取算力，服务于 AI 等计算需求。", "Golem 官网", "https://golem.network/"),
     ("crypto", "NEAR"): ("NEAR Protocol 是主打高性能与 AI 原生的 Layer 1 区块链，采用分片扩容、可读账户名与链抽象设计；NEAR 是其原生代币，用于支付手续费、质押与治理。", "NEAR 官网", "https://near.org/"),
     ("crypto", "AI"): ("Artificial Inu（AI）是在 Robinhood Chain 上发行的 ERC-20 社区代币，主要通过与代币化的 NVDA 股票代币组成链上流动性池进行交易；交易手续费按币种分别进入社区金库或用于销毁与锁仓。", "CoinGecko 项目资料", "https://artificialinu.com"),
-    ("crypto", "TRUMP"): ("TRUMP（Official Trump，俗称特朗普币或川普币）是与唐纳德·特朗普相关的 Meme 代币，于 2025 年 1 月在 Solana 网络发行。官方将其定位为表达支持的数字收藏品。", "Official Trump 官网", "https://www.gettrumpmemes.com/"),
+    ("crypto", "TRUMP"): ("TRUMP（特朗普币或川普币）是与唐纳德·特朗普相关的 Meme 代币，2025 年在 Solana 网络发行，官方定位为表达支持的数字收藏品。", "Official Trump 官网", "https://www.gettrumpmemes.com/"),
 }
 
 

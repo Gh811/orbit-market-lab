@@ -1361,12 +1361,11 @@ let label=document.createElement('h4');
 label.textContent='简介';
 let paragraph=document.createElement('p');
 paragraph.textContent=briefAssetSummary(p.summary);
-about.append(label,paragraph);
+about.append(label,paragraph);box.append(about);
 if(!loaded&&Date.now()<(profileErrorUntil[key]||0)){
   const retry=document.createElement('button');retry.type='button';retry.className='profileRetry';retry.textContent='重试加载资料';
-  retry.onclick=()=>{delete profileErrorUntil[key];renderInfo();loadProfile(a,true)};about.append(retry);
+  retry.onclick=()=>{delete profileErrorUntil[key];renderInfo();loadProfile(a,true)};box.append(retry);
 }
-box.append(about);
 let grid=document.createElement('div');
 grid.className='infoGrid';
 infoMetric(grid,'交易对',p.pair);

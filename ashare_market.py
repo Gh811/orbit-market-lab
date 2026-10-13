@@ -104,7 +104,7 @@ def candles(symbol,tf,before=None):
     bars=normalize_bars(row.get('klines',[]),tf)
     return [b for b in bars if before is None or b['t']<before][-1000:]
 CURATED_COMPANIES={
- 'SH600519':{'summary':'贵州茅台主营茅台酒及酱香系列酒的生产与销售，核心业务是白酒酿造与品牌经营，产品通过直销和经销渠道销售。','website':'https://www.moutai.com.cn/','source':'贵州茅台股份公司官网'},
+ 'SH600519':{'summary':'贵州茅台主营茅台酒及茅台酱香系列酒的生产与销售，核心业务是白酒酿造与品牌经营，产品通过直销和经销渠道销售。','website':'https://www.moutai.com.cn/','source':'贵州茅台股份公司官网'},
  'SZ002384':{'summary':'东山精密提供电子电路、光模块、精密组件及光电显示模组，产品包括柔性电路板和印制电路板，应用于消费电子、通信和汽车等行业。','website':'https://cn.dsbj.com/','source':'东山精密官网'}
 }
 F10='https://emweb.securities.eastmoney.com/PC_HSF10/CompanySurvey/PageAjax'

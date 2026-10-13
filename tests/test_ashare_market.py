@@ -32,12 +32,16 @@ class AShareTest(unittest.TestCase):
             profile=a.company_profile('SH600519')
         self.assertEqual(profile['website'],'https://www.moutaichina.com')
         summary=a.describe('SH600519',{'name':'贵州茅台','exchange':'上海证券交易所'},profile)
-        self.assertIn('上海证券交易所',summary);self.assertIn('所属行业：食品饮料-饮料-白酒',summary);self.assertIn('主营茅台酒',summary)
+        self.assertNotIn('上海证券交易所',summary);self.assertNotIn('人民币计价A股',summary);self.assertIn('主营茅台酒',summary);self.assertLessEqual(len(summary),80)
         wrong={'jbzl':[{'SECURITY_CODE':'000001','SECUCODE':'000001.SZ','SECURITY_NAME_ABBR':'平安银行','EM2016':'银行','ORG_PROFILE':'平安银行简介','ORG_WEB':''}]}
         with patch.object(a.subprocess,'run',return_value=SimpleNamespace(stdout=json.dumps(wrong))):
             self.assertIsNone(a.company_profile('SH600519'))
         with patch.object(a.subprocess,'run',return_value=SimpleNamespace(stdout='not json')):
             self.assertIsNone(a.company_profile('SH600519'))
+
+    def test_generic_profile_describes_business_instead_of_listing_history(self):
+        summary=a.describe('SZ000001',{'name':'平安银行','exchange':'深圳证券交易所'},{'profile':'平安银行成立于1987年。公司的主要业务包括零售银行、企业银行和财富管理服务。','industry':'银行'})
+        self.assertIn('零售银行',summary);self.assertNotIn('1987',summary);self.assertNotIn('交易所',summary);self.assertLessEqual(len(summary),80)
 
     def test_quote_fields_currency_and_no_invented_timestamp(self):
         row={'f57':'600519','f43':1234.56,'f60':1240,'f86':1791840000,'f124':0}
