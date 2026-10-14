@@ -6,6 +6,19 @@ function totals(rows){const result={};for(const r of normalize(rows))result[r.cu
 function merge(base,local,remote){const before=new Map(normalize(base).map(r=>[r.id,r])),edited=new Map(normalize(local).map(r=>[r.id,r]));const removed=new Set([...before.keys()].filter(id=>!edited.has(id)));const result=new Map(normalize(remote).filter(r=>!removed.has(r.id)).map(r=>[r.id,r]));for(const [id,row]of edited)if(!before.has(id)||JSON.stringify(row)!==JSON.stringify(before.get(id)))result.set(id,row);return normalize([...result.values()])}
 const walletIcon='<svg viewBox="0 0 40 40" fill="none" aria-hidden="true"><defs><linearGradient id="orbitWalletGold" x2="1" y2="1"><stop stop-color="#fff0c4"/><stop offset=".5" stop-color="#b98839"/><stop offset="1" stop-color="#f3d895"/></linearGradient></defs><path d="M7 10 28 6v7H7Z" fill="#b79050"/><rect x="5" y="11" width="31" height="23" rx="5" fill="#172024" stroke="url(#orbitWalletGold)" stroke-width="2"/><path d="M26 18h11v10H26a5 5 0 0 1 0-10Z" fill="url(#orbitWalletGold)"/><circle cx="28" cy="23" r="1.6" fill="#3c301a"/><path d="M10 15h15" stroke="#f5e0ac" stroke-opacity=".5"/></svg>';
 const speakerIcon='<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 16h6l8-7v22l-8-7H8Z" fill="#8bb7c633"/><g class="soundWaves"><path d="M27 14a9 9 0 0 1 0 12M31 9a16 16 0 0 1 0 22"/></g><path class="soundOffMark" d="m27 16 8 8m0-8-8 8"/></svg>';
+const ignitionButtons=new WeakSet();
+function installCapsuleIgnition(button){
+ if(ignitionButtons.has(button))return;ignitionButtons.add(button);
+ let timer=0,landing=0,first=true;
+ const visible=()=>button.isConnected&&!document.hidden&&!document.getElementById('petHome')?.hidden&&!document.body.classList.contains('authLocked')&&!document.body.classList.contains('accountOverlay')&&!document.body.classList.contains('petDeckOpen')&&!document.querySelector('#petDeck:not([hidden]),#petManager:not([hidden]),dialog[open]')&&!window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+ function sync(){
+  if(!visible()){clearTimeout(timer);clearTimeout(landing);timer=landing=0;if(button.classList.contains('petCapsuleIgniting'))button.classList.remove('petCapsuleIgniting');return}
+  if(timer||landing)return;
+  timer=setTimeout(()=>{timer=0;if(!visible())return;first=false;button.classList.add('petCapsuleIgniting');landing=setTimeout(()=>{landing=0;button.classList.remove('petCapsuleIgniting');sync()},3600)},(first?3000:12000)+Math.random()*(first?3000:18000));
+ }
+ new MutationObserver(sync).observe(document.body,{subtree:true,attributes:true,attributeFilter:['hidden','open','class']});
+ document.addEventListener('visibilitychange',sync);window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',sync);sync();
+}
 function accountBadge(button,{url,name,status,username}){
  let image=button.querySelector('.petHelmetAvatar');
  if(!image){
@@ -17,6 +30,7 @@ function accountBadge(button,{url,name,status,username}){
  if(image.getAttribute('src')!==url){image.style.visibility='visible';image.src=url}image.alt=name;
  if(status&&!button.contains(status)){button.append(status);status.setAttribute('role','img')}
  button.setAttribute('aria-label',(username||'星轨')+' · 打开个人资料');button.title=username||'个人资料';
+ installCapsuleIgnition(button);
 }
 function install({root,open,close,getOwner,getEntries,onSave}){
  const right=root.querySelector('.petHeadRight');if(!right||right.querySelector('.petHomeToolRows'))return;

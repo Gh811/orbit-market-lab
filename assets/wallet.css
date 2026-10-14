@@ -64,16 +64,15 @@ html[data-device="phone"] #walletDialog,#walletDialog{inset:0;margin:0;padding:0
 #petHome .petHeadAccount #petStatus.ok{background:#7be3bd;box-shadow:0 0 5px #7be3bd66}
 #petHome .petHeadAccount #petStatus.warn{background:#e6bf65;box-shadow:0 0 5px #e6bf6566}
 #petHome .petHeadAccount #petStatus.bad{background:#ef7c7c;box-shadow:0 0 5px #ef7c7c66}
-/* The account capsule belongs exclusively to the home surface. Keep its grid
-   space so opening another page does not shift the underlying home tools. */
+/* The account capsule belongs exclusively to the home surface. Hide the entire button, including its glowing descendants. */
 body.petDeckOpen #petAccountButton,
 body:has(#petDeck:not([hidden])) #petAccountButton,
 body:has(#petManager:not([hidden])) #petAccountButton,
 body:has(dialog[open]) #petAccountButton,
 body.authLocked #petAccountButton,
 body.accountOverlay #petAccountButton{display:none!important;visibility:hidden;pointer-events:none}
-#petHome .petHelmetExhaust{position:absolute;left:23px;top:59px;width:10px;height:23px;pointer-events:none;opacity:0;transform-origin:50% 0;border-radius:30% 30% 65% 65%;background:radial-gradient(ellipse at 50% 5%,#fff8d5 0 12%,#a9f9ff 28%,#48cee9 48%,#eead65 65%,transparent 78%);filter:drop-shadow(0 0 3px #62deee);animation:petCapsuleExhaust 26s linear infinite}
-#petHome .petAccountHelmet{animation:petCapsuleLaunch 26s ease-in-out infinite}
+#petHome .petHelmetExhaust{position:absolute;left:23px;top:59px;width:10px;height:23px;pointer-events:none;opacity:0;transform-origin:50% 0;border-radius:30% 30% 65% 65%;background:radial-gradient(ellipse at 50% 5%,#fff8d5 0 12%,#a9f9ff 28%,#48cee9 48%,#eead65 65%,transparent 78%);filter:drop-shadow(0 0 3px #62deee);animation:none}
+#petHome .petAccountHelmet{animation:none}
 @keyframes petCapsuleExhaust{0%,70%,80%,100%{opacity:0;transform:scale(.5,.15)}71%{opacity:.65;transform:scale(.8,.55)}72%{opacity:1;transform:scale(1,1)}73%{opacity:.8;transform:scale(.85,.7)}74%{opacity:1;transform:scale(1.15,1.2)}75%{opacity:.9;transform:scale(.9,.9)}77%{opacity:.7;transform:scale(.8,.6)}79%{opacity:0;transform:scale(.5,.15)}}
 @keyframes petCapsuleLaunch{0%,70%,80%,100%{transform:translateY(0)}72%{transform:translateY(-1px)}75%{transform:translateY(-3px)}78%{transform:translateY(-1px)}}
 /* A physical dome lamp sits in the metal socket below the cabin window. */
@@ -83,7 +82,7 @@ body.accountOverlay #petAccountButton{display:none!important;visibility:hidden;p
 #petHome .petHeadRight .petHeadAccount #petStatus.bad{--capsule-lamp:#ff9696}
 #petHome .petHeadRight .petHeadAccount #petStatus:before{display:none}
 /* Retracting steel doors close before ignition and reopen only after landing. */
-#petHome .petHelmetVisor:before,#petHome .petHelmetVisor:after{content:"";position:absolute;top:0;bottom:0;width:50%;z-index:2;pointer-events:none;box-sizing:border-box;border:1px solid #d3e6ee;background:repeating-linear-gradient(0deg,transparent 0 8px,#20374630 8px 9px),linear-gradient(105deg,#536e80,#d9e4e9 28%,#91a8b6 55%,#425c70);box-shadow:inset 0 1px 2px #f3fcff90,inset 0 -2px 3px #1c304d80;animation:petCapsuleDoor 26s ease-in-out infinite}
+#petHome .petHelmetVisor:before,#petHome .petHelmetVisor:after{content:"";position:absolute;top:0;bottom:0;width:50%;z-index:2;pointer-events:none;box-sizing:border-box;border:1px solid #d3e6ee;background:repeating-linear-gradient(0deg,transparent 0 8px,#20374630 8px 9px),linear-gradient(105deg,#536e80,#d9e4e9 28%,#91a8b6 55%,#425c70);box-shadow:inset 0 1px 2px #f3fcff90,inset 0 -2px 3px #1c304d80;transform:translateX(var(--door-open));animation:none}
 #petHome .petHelmetVisor:before{left:0;--door-open:-105%;border-radius:18px 0 0 18px}
 #petHome .petHelmetVisor:after{right:0;--door-open:105%;border-radius:0 18px 18px 0}
 @keyframes petCapsuleDoor{0%,65%,85%,100%{transform:translateX(var(--door-open))}69%,81%{transform:translateX(0)}}
@@ -96,3 +95,11 @@ body:has(#petDeck:not([hidden])) .petHelmetExhaust,
 body:has(#petManager:not([hidden])) .petHelmetExhaust,
 body:has(dialog[open]) .petHelmetExhaust{animation-play-state:paused}
 @media(prefers-reduced-motion:reduce){#petHome .petAccountHelmet,#petHome .petHelmetExhaust{animation:none}#petHome .petHelmetExhaust{display:none}}
+
+/* One short launch per random timer; no animation runs while idle. */
+#petHome .petCapsuleIgniting .petHelmetExhaust{animation:petCapsuleExhaust 3.6s linear both}
+#petHome .petCapsuleIgniting .petAccountHelmet{animation:petCapsuleLaunch 3.6s ease-in-out both}
+#petHome .petCapsuleIgniting .petHelmetVisor:before,#petHome .petCapsuleIgniting .petHelmetVisor:after{animation:petCapsuleDoor 3.6s ease-in-out both}
+#petHome .petCapsuleIgniting #petStatus{animation:petCapsuleWarmup 3.6s ease-in-out both}
+@keyframes petCapsuleWarmup{0%,100%{filter:brightness(1)}35%,65%{filter:brightness(1.7)}75%{filter:brightness(1.3)}}
+@media(prefers-reduced-motion:reduce){#petHome .petCapsuleIgniting .petHelmetExhaust,#petHome .petCapsuleIgniting .petAccountHelmet,#petHome .petCapsuleIgniting .petHelmetVisor:before,#petHome .petCapsuleIgniting .petHelmetVisor:after,#petHome .petCapsuleIgniting #petStatus{animation:none}}
