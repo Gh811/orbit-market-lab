@@ -9,7 +9,7 @@ class Node{
   replaceChildren(){for(const n of [...this.children])n.remove()}
   querySelectorAll(s){return this.children.filter(n=>s==='.petNoticePuff'?n.className?.includes('petNoticePuff'):n.dataset.watchId)}
   querySelector(s){return this.children.find(n=>'.'+n.className===s)||null}
-  setAttribute(){}setPointerCapture(){}releasePointerCapture(){}
+  setAttribute(){}removeAttribute(){}setPointerCapture(){}releasePointerCapture(){}
   cloneNode(){return new Node()}
   getBoundingClientRect(){if(!this.parentNode)return{left:0,right:350,top:100,bottom:440,width:350,height:340};const i=this.parentNode.children.indexOf(this),left=(i%5)*70,top=100+Math.floor(i/5)*82;return{left,right:left+62,top,bottom:top+74,width:62,height:74}}
 }
@@ -38,10 +38,5 @@ const dialog=new Node();dialog.open=false;dialog.showModal=()=>{dialog.open=true
 let focused=0,searched=0;nodes.petOwnSearch={focus(){focused++}};nodes.petOwnResults=new Node();c.searchPetAssets=()=>{searched++};
 list.querySelector('.petPouchAdd').onclick();assert.equal(dialog.open,true);assert.equal(focused,1);assert.equal(searched,1);assert.equal(saves,1,'opening search does not change holdings');
 c.window.innerWidth=428;const expirations=[];c.setTimeout=fn=>{expirations.push(fn)};
-c.showPetAlreadyAdded(list.children[0]);const first=dialog.children.at(-1);assert.equal(first.textContent,'已经在自选中');
-c.showPetAlreadyAdded(list.children[0]);const second=dialog.children.at(-1);
-c.showPetNotice('名字重复');assert.equal(dialog.children.length,3,'each click retains an independent rising notice');
-assert.ok(Number(first.dataset.noticeLift)>Number(second.dataset.noticeLift),'older messages rise above newer messages');
-expirations[0]();assert.equal(dialog.children.length,2,'each notice expires independently');
-expirations.slice(1).forEach(expire=>expire());assert.equal(dialog.children.length,0,'all smoke feedback cleans itself up');
+const card=list.children[0],badge=new Node();badge.className='petSearchAdded';card.append(badge);c.showPetAlreadyAdded(card);assert.equal(badge.textContent,'已在自选中');c.showPetAlreadyAdded(card);assert.equal(card.children.filter(n=>n.className==='petSearchAdded').length,1,'repeat taps update the reserved status instead of adding floating notices');assert.equal(dialog.children.length,0,'selection status stays in its row');
 console.log('Five-column pouch: 50 numbered cards, cross-row drag persists, cancellation restores order, numbering refreshes PASS');

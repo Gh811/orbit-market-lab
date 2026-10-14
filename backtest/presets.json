@@ -1,0 +1,200 @@
+{
+  "version": "research-options-v3",
+  "symbols": [
+    "BTC",
+    "ETH"
+  ],
+  "timeframes": [
+    {
+      "value": "4h",
+      "label": "4 小时 · 波段"
+    },
+    {
+      "value": "6h",
+      "label": "6 小时 · 中期"
+    },
+    {
+      "value": "1d",
+      "label": "日线 · 长期"
+    },
+    {
+      "value": "2h",
+      "label": "2 小时"
+    }
+  ],
+  "capitals": [
+    10000,
+    50000,
+    100000
+  ],
+  "periods": [
+    {
+      "value": "all",
+      "label": "全部已有历史 → 2026"
+    },
+    {
+      "value": "2022",
+      "label": "2022 年起 → 2026"
+    },
+    {
+      "value": "2023",
+      "label": "2023 年起 → 2026"
+    },
+    {
+      "value": "2024",
+      "label": "2024 年起 → 2026"
+    }
+  ],
+  "fixed": {
+    "risk": 0.005,
+    "fee": 0.0005,
+    "slippage": 0.0002,
+    "lookback": 1200,
+    "warmup": 200
+  },
+  "threshold": 0.1,
+  "strategies": [
+    {
+      "value": "pyramidChannel",
+      "label": "通道浮盈跟踪",
+      "tag": "浮盈保护后加仓",
+      "description": "沿用已冻结的通道或结构信号，已有仓位净止损不亏损才加仓；最多3笔，名义仓位不超过资金，单笔风险0.5%。",
+      "maxHold": 720
+    },
+    {
+      "value": "pyramidCompression",
+      "label": "收缩浮盈跟踪",
+      "tag": "浮盈保护后加仓",
+      "description": "沿用已冻结的通道或结构信号，已有仓位净止损不亏损才加仓；最多3笔，名义仓位不超过资金，单笔风险0.5%。",
+      "maxHold": 720
+    },
+    {
+      "value": "pyramidStructure",
+      "label": "结构浮盈跟踪",
+      "tag": "浮盈保护后加仓",
+      "description": "沿用已冻结的通道或结构信号，已有仓位净止损不亏损才加仓；最多3笔，名义仓位不超过资金，单笔风险0.5%。",
+      "maxHold": 720
+    },
+    {
+      "value": "pyramidWick",
+      "label": "影线浮盈跟踪",
+      "tag": "浮盈保护后加仓",
+      "description": "已有仓位止损扣费用后不亏损时才加仓，最多3笔，总名义仓位不超过资金，单笔风险0.5%。",
+      "maxHold": 720
+    },
+    {
+      "value": "pyramidEngulf",
+      "label": "吞没浮盈跟踪",
+      "tag": "浮盈保护后加仓",
+      "description": "已有仓位止损扣费用后不亏损时才加仓，最多3笔，总名义仓位不超过资金，单笔风险0.5%。",
+      "maxHold": 720
+    },
+    {
+      "value": "pyramidTrend",
+      "label": "趋势浮盈跟踪",
+      "tag": "浮盈保护后加仓",
+      "description": "已有仓位止损扣费用后不亏损时才加仓，最多3笔，总名义仓位不超过资金，单笔风险0.5%。",
+      "maxHold": 720
+    },
+    {
+      "value": "wickBreak",
+      "label": "影线突破跟踪",
+      "tag": "影线确认后持有",
+      "description": "长影线后收盘突破，顺EMA200方向，以突破K线另一侧为止损，不设固定止盈，6ATR跟踪。",
+      "maxHold": 720
+    },
+    {
+      "value": "engulfBreak",
+      "label": "吞没突破跟踪",
+      "tag": "突破K线保护",
+      "description": "趋势回踩中的实体吞没，以突破K线另一侧为止损，不设固定止盈，6ATR跟踪。",
+      "maxHold": 720
+    },
+    {
+      "value": "wickSweep",
+      "label": "插针回收",
+      "tag": "支撑压力回收",
+      "description": "刺穿前20根低点或高点后收回，影线主导，顺EMA50/200方向；针尖外0.1ATR止损，3R目标，48根期限。",
+      "maxHold": 48
+    },
+    {
+      "value": "pinConfirm",
+      "label": "长影线确认",
+      "tag": "锤子线与流星线",
+      "description": "前一根长影线至少2倍实体且占范围55%，最新收盘突破形态高低点；EMA200方向过滤，针尖止损，4R目标，72根期限。",
+      "maxHold": 72
+    },
+    {
+      "value": "engulfRide",
+      "label": "吞没回踩",
+      "tag": "趋势中的吞没",
+      "description": "EMA50/200趋势中回踩EMA20后，实体吞没且收盘突破前一根高低点；结构止损，不设固定止盈，3ATR跟踪，240根期限。",
+      "maxHold": 240
+    },
+    {
+      "value": "compressionRide",
+      "label": "收缩突破跟踪",
+      "tag": "波动收缩后启动",
+      "description": "EMA50/200 定方向，10 根区间压缩后突破；以前一根结构止损，0.5–1.5 ATR 风险距离，不设固定止盈，6 ATR 跟踪退出。",
+      "maxHold": 720
+    },
+    {
+      "value": "structureRide",
+      "label": "结构突破跟踪",
+      "tag": "趋势中的内包突破",
+      "description": "强趋势中的内包 K 线突破，以内包结构止损，0.3–1.2 ATR 风险距离；不设固定止盈，5 ATR 跟踪退出。",
+      "maxHold": 720
+    },
+    {
+      "value": "macroRide",
+      "label": "大周期趋势持有",
+      "tag": "不设固定止盈",
+      "description": "EMA20/50/200 同向、ADX≥20；1.5 ATR 初始止损，不设固定止盈，6 ATR 跟踪退出，保留趋势延伸。",
+      "maxHold": 720
+    },
+    {
+      "value": "channelRide",
+      "label": "长趋势追踪",
+      "tag": "通道突破",
+      "description": "55 根通道突破与 EMA200 同向，3 ATR 初始止损，4 ATR 跟踪退出。拉长持仓，减少过早止盈。",
+      "maxHold": 360
+    },
+    {
+      "value": "momentumContinuation",
+      "label": "动量延续",
+      "tag": "回踩再启动",
+      "description": "EMA20/50/200 同向，回踩后突破前一根高低点，RSI 与方向一致；1.5 ATR 止损、5R 目标、2.5 ATR 跟踪。",
+      "maxHold": 180
+    },
+    {
+      "value": "rangeRecovery",
+      "label": "区间回归",
+      "tag": "震荡修复",
+      "description": "ADX 低于 20，价格重新进入布林带，RSI 脱离极端区间；以中轨为目标，过滤不足 1.5R 的机会。",
+      "maxHold": 48
+    },
+    {
+      "value": "trendBreakout",
+      "label": "趋势突破 v2",
+      "tag": "旧版对照",
+      "description": "20 根通道突破、EMA50/200 同向、ADX14 ≥ 20；2 ATR 止损、3R 目标、3 ATR 跟踪。",
+      "maxHold": 96
+    },
+    {
+      "value": "trendPullback",
+      "label": "趋势回踩 v1",
+      "tag": "旧版对照",
+      "description": "EMA20/50/200 同向，回踩收回并确认；拐点止损与固定 2R 止盈。",
+      "maxHold": 48
+    }
+  ],
+  "suite": {
+    "symbols": [
+      "BTC",
+      "ETH"
+    ],
+    "tf": "6h",
+    "capital": 10000,
+    "period": "all"
+  }
+}

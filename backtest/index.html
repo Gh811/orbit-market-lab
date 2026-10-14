@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="color-scheme" content="dark">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#263c58">
+  <title>星轨 · 策略</title>
+  <link rel="stylesheet" href="./style.css?v=orbit-embedded119">
+</head>
+<body>
+  <main class="compactLab">
+    <header class="researchNav">
+      <a id="researchBack" class="researchBack" href="/" aria-label="返回星轨">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 5 8.5 12 15.5 19"/></svg>
+      </a>
+      <div class="researchTitle"><span class="eyebrow">ORBIT · 星轨</span><h1>策略</h1></div>
+    </header>
+    <div id="researchScroll" class="researchScroll">
+    <div id="dataCounts" class="dataCounts"><span>BTC K线 · 读取中</span><span>ETH K线 · 读取中</span></div>
+    <section class="controlPanel" aria-label="策略设置">
+      <form id="form" class="singleStrategyForm">
+        <label>选择策略<select id="strategy" disabled><option>正在加载…</option></select></label>
+        <button id="run" disabled>运行策略</button>
+      </form>
+      <section class="fixedSetup" aria-label="基础设置"><h2>基础设置</h2><dl id="fixedSetup"></dl></section>
+    </section>
+    <p id="status" class="researchStatus" role="status">正在连接…</p>
+    <section id="result" hidden>
+      <div class="resultHead"><h2 id="resultTitle">策略结果</h2><span id="qualification" class="qualification"></span></div>
+      <div id="metrics" class="metrics"></div>
+      <section class="panel">
+        <div class="row"><h2>资金曲线</h2><div class="chartLegend"><span>● 策略</span><span>● 持有(毛)</span></div></div>
+        <p id="coverage"></p>
+        <svg id="chart" viewBox="0 0 900 250" role="img" aria-label="模拟资金曲线"></svg>
+        <p id="chartReadout" class="chartReadout">触摸查看资金</p>
+      </section>
+      <section class="panel">
+        <div class="row"><h2>逐年收益</h2><button id="export" type="button">导出交易</button></div>
+        <div id="yearly" class="yearGrid"></div>
+      </section>
+      <div hidden><table><tbody id="trades"></tbody></table><button id="more">更多</button></div>
+    </section>
+    <p class="compactFooter">历史回测 · 未计资金费率</p>
+    </div>
+  </main>
+  <script src="./app.js?v=orbit-embedded119" defer></script>
+</body>
+</html>

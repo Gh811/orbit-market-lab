@@ -7,7 +7,7 @@ vm.createContext(c);
 vm.runInContext(source.slice(source.indexOf('function renderAuthPetChoices('),source.indexOf('function setupAccount(')),c);
 vm.runInContext(source.slice(source.indexOf('function defaultAccountState('),source.indexOf('function restoreAccount(')),c);
 c.renderAuthPetChoices();const picker=nodes.authPetPicker,buttons=picker.querySelectorAll();assert.equal(picker.hidden,false);assert.equal(buttons.length,8);assert.equal(buttons[0].attrs['aria-pressed'],'true');
-buttons[6].onclick();assert.equal(c.registrationPetKind,6);assert.equal(buttons[6].attrs['aria-pressed'],'true');assert.equal(buttons[0].attrs['aria-pressed'],'false');assert.equal(previews,1);assert.equal(c.defaultAccountState().groups[0].petKind,6,'new account state stores chosen avatar');
+buttons[6].onclick();assert.equal(c.registrationPetKind,6);assert.equal(buttons[6].attrs['aria-pressed'],'true');assert.equal(buttons[0].attrs['aria-pressed'],'false');assert.equal(previews,1);assert.equal(c.defaultAccountState().groups[0].petKind,0,'default watchlist companion is independent of the personal avatar');assert.match(source,/authMode==='register'\?\{avatarKind:registrationPetKind\}/,'registration still submits the chosen personal avatar');
 c.authMode='login';c.renderAuthPetChoices();assert.equal(picker.hidden,true);assert.equal(c.defaultAccountState().groups[0].petKind,0,'login does not inherit another registration choice');
 c.window.innerWidth=1440;delete nodes.authPetPicker;c.renderAuthPetChoices();assert.equal(nodes.authPetPicker,undefined,'desktop has no mobile picker');
 console.log('Registration avatar: eight choices, rabbit default, preview, selected avatar in new account state, login and desktop isolation PASS');

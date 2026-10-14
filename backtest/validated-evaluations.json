@@ -1,0 +1,131 @@
+[
+  {
+    "strategy": "pyramidEngulf",
+    "symbol": "ETH",
+    "tf": "2h",
+    "strategyHash": "7276377276ab5d8fbe40d8cefadd066fca9af2ad71af4ce9f2aa6c4109510597",
+    "configurationHash": "7c27bb90dfcf0309e6cc1df81eae97ae2c5fd273f2cfe0a9c80839b334b2724a",
+    "plan": {
+      "symbols": [
+        "ETH"
+      ],
+      "tf": "2h",
+      "capital": 10000
+    },
+    "testFrom": 1728316800000,
+    "to": 1791806400000,
+    "summary": {
+      "annualizedReturn": 0.1291569205683181,
+      "averageYearlyReturn": 0.23855271246268162,
+      "completeYears": 1,
+      "eligibility": "pass",
+      "threshold": 0.1,
+      "years": 2.0118640200775726,
+      "finalCapital": 12768.341195745246,
+      "return": 0.27683411957452453,
+      "maxDrawdown": 0.141715128880636,
+      "trades": 114,
+      "winRate": 0.14035087719298245,
+      "profitFactor": 1.5269241184248703,
+      "fees": 433.43242604286417,
+      "buyHold": 0.025849329338706095
+    },
+    "config": {
+      "strategy": "pyramidEngulf",
+      "capital": 10000,
+      "risk": 0.005,
+      "fee": 0.0005,
+      "slippage": 0.0002,
+      "lookback": 1200,
+      "warmup": 200,
+      "maxHold": 720,
+      "interval": 7200000
+    }
+  },
+  {
+    "strategy": "pyramidTrend",
+    "symbol": "BTC",
+    "tf": "6h",
+    "strategyHash": "7276377276ab5d8fbe40d8cefadd066fca9af2ad71af4ce9f2aa6c4109510597",
+    "configurationHash": "c964c8bdea39392cea44110d14ebdc1d47d5d3833103dd1c28903c5f2f9c7778",
+    "plan": {
+      "symbols": [
+        "BTC"
+      ],
+      "tf": "6h",
+      "capital": 10000
+    },
+    "testFrom": 1580788800000,
+    "to": 1791842400000,
+    "summary": {
+      "annualizedReturn": 0.11159546747693945,
+      "averageYearlyReturn": 0.06298876420702462,
+      "completeYears": 5,
+      "eligibility": "pass",
+      "threshold": 0.1,
+      "years": 6.687885010266941,
+      "finalCapital": 20290.217204693818,
+      "return": 1.0290217204693817,
+      "maxDrawdown": 0.12648085144261806,
+      "trades": 210,
+      "winRate": 0.24285714285714285,
+      "profitFactor": 1.7714599848674928,
+      "fees": 592.1291772841345,
+      "buyHold": 8.063970316206392
+    },
+    "config": {
+      "strategy": "pyramidTrend",
+      "capital": 10000,
+      "risk": 0.005,
+      "fee": 0.0005,
+      "slippage": 0.0002,
+      "lookback": 1200,
+      "warmup": 200,
+      "maxHold": 720,
+      "interval": 21600000
+    }
+  },
+  {
+    "strategy": "pyramidTrend",
+    "symbol": "ETH",
+    "tf": "2h",
+    "strategyHash": "7276377276ab5d8fbe40d8cefadd066fca9af2ad71af4ce9f2aa6c4109510597",
+    "configurationHash": "03154d7ed45a5d7572c79ce7eefc852762e92e016a19b37138a63deafab26ab7",
+    "plan": {
+      "symbols": [
+        "ETH"
+      ],
+      "tf": "2h",
+      "capital": 10000
+    },
+    "testFrom": 1728316800000,
+    "to": 1791806400000,
+    "summary": {
+      "annualizedReturn": 0.14356063533302282,
+      "averageYearlyReturn": 0.15444645637455223,
+      "completeYears": 1,
+      "eligibility": "pass",
+      "threshold": 0.1,
+      "years": 2.0118640200775726,
+      "finalCapital": 13098.138634817418,
+      "return": 0.3098138634817418,
+      "maxDrawdown": 0.23304974584032925,
+      "trades": 201,
+      "winRate": 0.1890547263681592,
+      "profitFactor": 1.3474090511155576,
+      "fees": 508.66628288010344,
+      "buyHold": 0.025849329338706095
+    },
+    "config": {
+      "strategy": "pyramidTrend",
+      "capital": 10000,
+      "risk": 0.005,
+      "fee": 0.0005,
+      "slippage": 0.0002,
+      "lookback": 1200,
+      "warmup": 200,
+      "maxHold": 720,
+      "interval": 7200000
+    }
+  }
+]

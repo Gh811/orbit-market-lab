@@ -17,7 +17,9 @@ class AssetDataPipelineTests(unittest.TestCase):
         self.store_patch = patch.object(server, 'market_store', return_value=self.store)
         self.store_patch.start()
 
+        self.brand_patch=patch.object(server,'ASSET_BRAND_PIPELINE');self.brand_patch.start()
     def tearDown(self):
+        self.brand_patch.stop()
         self.store_patch.stop()
         self.folder.cleanup()
 
@@ -73,6 +75,11 @@ class AssetDataPipelineTests(unittest.TestCase):
             self.assertTrue(first['incomplete'])
             with patch('time.time', return_value=now + 31):
                 second, _ = server.asset_profile('swap', 'SOXS')
+                # The mobile endpoint returns cached data while refreshing in a worker.
+                deadline = time.monotonic() + 1
+                while second['incomplete'] and time.monotonic() < deadline:
+                    time.sleep(.01)
+                    second = self.store.read(MarketStore.key('info', 'swap', 'SOXS'))[0]
             self.assertFalse(second['incomplete'])
             self.assertEqual(fetch.call_count, 2)
 

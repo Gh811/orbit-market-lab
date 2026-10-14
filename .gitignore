@@ -4,10 +4,34 @@
 __pycache__/
 tests/__pycache__/
 
-# Local-only runtime data and credentials
+# Local state, secrets, generated previews and backups are not published.
 .env
 .env.*
+!.env.example
+*.sqlite3
+*.sqlite3-*
+*.sqlite3.*
 *.log
-*.sqlite3*
+*.pid
 .DS_Store
 artifacts/
+.codex/
+.agents/
+**/__pycache__/
+backtest/results/
+
+# Local release snapshots and recoverable cleanup archives.
+.releases/
+.local-archive/
+
+# Public library acquisition progress is runtime state.
+.asset_prefill_status.json*
+
+# Portable public metadata snapshots remain local.
+.local-data/
+
+.asset_metadata_status.json*
+
+# Generated local database inventory reports; regenerate for current counts.
+/数据完整性报告.txt
+/数据库标的清单.txt

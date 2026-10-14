@@ -43,6 +43,15 @@ class AShareTest(unittest.TestCase):
         summary=a.describe('SZ000001',{'name':'平安银行','exchange':'深圳证券交易所'},{'profile':'平安银行成立于1987年。公司的主要业务包括零售银行、企业银行和财富管理服务。','industry':'银行'})
         self.assertIn('零售银行',summary);self.assertNotIn('1987',summary);self.assertNotIn('交易所',summary);self.assertLessEqual(len(summary),80)
 
+    def test_business_summary_ends_naturally_without_cutting_words(self):
+        self.assertEqual(a._clip_profile('公司提供工业软件，'+'应用场景与发展过程'*30+'。'),'公司提供工业软件。')
+        self.assertEqual(a._clip_profile('第一句。第二句。第三句。'),'第一句。第二句。')
+        self.assertEqual(a._clip_profile('企业'*100),'业务简介正在补全。')
+        self.assertEqual(a._clip_profile('公司主营电子元器件…'),'业务简介正在补全。')
+        for company in a.CURATED_COMPANIES.values():
+            self.assertLessEqual(len(company['summary']),70)
+            self.assertNotIn('…',company['summary'])
+
     def test_quote_fields_currency_and_no_invented_timestamp(self):
         row={'f57':'600519','f43':1234.56,'f60':1240,'f86':1791840000,'f124':0}
         with patch.object(a,'request',return_value=row):

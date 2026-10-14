@@ -1,6 +1,7 @@
 """Public OKX USDT perpetual instruments, quotes and candlesticks."""
 
 import json
+import os
 import math
 import re
 import ssl
@@ -10,7 +11,9 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 BASE = "https://www.okx.com/api/v5"
-SNAPSHOT = Path(__file__).resolve().parent / "assets" / "okx_instruments.json"
+ROOT=Path(__file__).resolve().parent
+_RUNTIME_SNAPSHOT=ROOT/'.local-data/catalogs/okx_instruments.json'
+SNAPSHOT = Path(os.environ.get('MARKET_INSTRUMENT_SNAPSHOT',str(_RUNTIME_SNAPSHOT if _RUNTIME_SNAPSHOT.exists() else ROOT/'assets/okx_instruments.json')))
 BARS = {"1m": "1m", "5m": "5m", "15m": "15m", "1h": "1H",
         "2h": "2H", "4h": "4H", "6h": "6H", "1d": "1D",
         "2d": "2D", "1w": "1W", "1M": "1M"}

@@ -5,7 +5,7 @@ const canonical={type:'swap',symbol:'SOXS',pair:'SOXS-USDT-SWAP',name:'Direxion 
 function fixture(reply){
  let timerId=0,calls=0;const timers=new Map(),stored=[];
  const a={type:'swap',symbol:'SOXS',name:'SOXS'};
- const c={profiles:{},profileCachedAt:{},profileErrorUntil:{},profileLoading:new Set(),profileRetryTimers:new Map(),queuedProfile:new Set(),profileJobs:[],PROFILE_CACHE:'test-profiles',accountSpace:'alice',assets:[a],infoPreviewAsset:null,selected:'',Date,AbortController,
+ const c={profiles:{},profileCachedAt:{},profileErrorUntil:{},profileLoading:new Set(),profileRetryTimers:new Map(),queuedProfile:new Set(),profileJobs:[],PROFILE_FRESH_MS:30*86400000,assetProfileCache:{get(){return null},put:(id,p)=>{if(!p.incomplete)stored.push(p)}},PROFILE_CACHE:'test-profiles',accountSpace:'alice',assets:[a],infoPreviewAsset:null,selected:'',Date,AbortController,
  assetId:x=>x.type+':'+x.symbol,document:{hidden:false},navigator:{onLine:true},
  transientCacheStorage:{setItem:(k,v)=>stored.push(v)},api:async()=>{calls++;return reply},
  setTimeout(f,ms){timers.set(++timerId,{f,ms});return timerId},clearTimeout:id=>timers.delete(id),
@@ -22,6 +22,6 @@ function fixture(reply){
  release(canonical);const results=await Promise.all([first,second]);assert.equal(results[0].symbol,'SOXS');assert.equal(results[1].symbol,'SOXS');assert.equal(joined.c.profileLoading.size,0);
  const partial=fixture({...canonical,incomplete:true,summary:'中文简介正在补全。'});await partial.c.loadProfile(partial.a);const retry=[...partial.timers.values()].find(t=>t.ms===30000);assert.ok(retry);assert.ok(Date.now()-partial.c.profileCachedAt['swap:SOXS']>3589000);
  partial.c.accountSpace='bob';retry.f();assert.equal(partial.calls(),1);
- partial.c.profileCachedAt['swap:SOXS']=Date.now()-3600001;partial.c.queueProfile(partial.a);assert.equal(partial.c.profileJobs.length,1);
+ partial.c.profileCachedAt['swap:SOXS']=Date.now()-30*86400000-1;partial.c.queueProfile(partial.a);assert.equal(partial.c.profileJobs.length,1);
  console.log('Profiles: wrong symbol/pair rejected before caching, canonical names retained, incomplete retry after 30 seconds, switched-account retry skipped, expired profiles requeued: PASS');
 })().catch(e=>{console.error(e);process.exitCode=1});

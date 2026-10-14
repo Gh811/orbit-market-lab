@@ -12,7 +12,7 @@ const asset={type:'swap',symbol:'BTC',groupId:'one'},next={type:'swap',symbol:'E
 const nodes=Object.fromEntries(['deckCard','deckPrevious','deckNext','deckCount','petDeck'].map(id=>[id,new Node()]));
 const ctx=vm.createContext({window:{},document:{createElement:()=>new Node()},$:id=>nodes[id],assets:[asset,next],accountSpace:'user',petDeckIndex:0,petDeckGroup:'one',HOT_GROUP_ID:'hot',hotUpdatedAt:0,
   deckMembers:()=>[asset,next],assetId:a=>a.type+':'+a.symbol,save(){},localStorage:{getItem:()=>null,setItem(){}},
-  quotes:{'swap:BTC':{p:100,base:99}},profiles:{},fmt:v=>v==null?'—':String(v),logoFor:()=>new Node(),
+  quotes:{'swap:BTC':{p:100,base:99}},profiles:{},fmt:v=>v==null?'—':String(v),logoFor:()=>new Node(),prioritizeAssetDisplay(){},
   openInfoForPreview(){},openDeckChart(){},deckAdd(){},queueProfile(){},renderDeckPeriods(){},resetDeckAnalysis(){},deckEnsureRatio(){},deckMobileTf:'15m'});
 vm.runInContext(source.slice(source.indexOf('const ASHARE_PERIODS='),source.indexOf('function priceText(')),ctx);
 vm.runInContext(source.slice(source.indexOf('function deckUpdateCount(){'),source.indexOf('function deckSlideTransform(')),ctx);

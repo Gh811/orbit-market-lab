@@ -1,7 +1,12 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
-const source=fs.readFileSync(require('node:path').join(__dirname,'../assets/app.js'),'utf8');const c={};vm.createContext(c);
+const source=fs.readFileSync(require('node:path').join(__dirname,'../assets/app.js'),'utf8'),c={};vm.createContext(c);
 vm.runInContext(source.slice(source.indexOf('function briefAssetSummary('),source.indexOf('function renderInfo(){')),c);
 const short='东山精密提供电子电路、光模块及精密组件，产品应用于消费电子、通信和汽车。';assert.equal(c.briefAssetSummary(short),short);
-const long='公司研发并制造半导体芯片，服务于汽车、通信、消费电子和数据中心客户。'.repeat(8);const result=c.briefAssetSummary(long);assert.ok(result.length<=80);assert.ok(result.endsWith('。'));
-assert.ok(c.briefAssetSummary('Long unbroken description '.repeat(20)).length<=80);assert.ok(c.briefAssetSummary('企业'.repeat(100)).length<=80);
-assert.equal(c.briefAssetSummary(''),'简介暂未收录。');console.log('Brief asset summary: short business retained, long descriptions fit bounded copy, sentence boundary retained PASS');
+const long='公司研发并制造半导体芯片，服务于汽车、通信、消费电子和数据中心客户。'.repeat(8),result=c.briefAssetSummary(long);
+assert.ok(result.length<=240);assert.ok(result.endsWith('。'));assert.ok(!result.includes('…'));assert.ok(result.split('。').filter(Boolean).length<=2);
+assert.equal(c.briefAssetSummary(''),'简介暂未收录。');assert.equal(c.briefAssetSummary('第一句。第二句。第三句。'),'第一句。第二句。');
+assert.equal(c.briefAssetSummary('企业'.repeat(100)),'企业'.repeat(100)+'。','valid saved copy must not become a fabricated pending message');
+assert.ok(!c.briefAssetSummary('Long unbroken description '.repeat(20)).includes('正在补全'),'valid foreign-language data stays available');
+assert.equal(c.briefAssetSummary('公司提供工业软件，'+ '应用场景和发展过程'.repeat(40)+'。'),'公司提供工业软件。');
+const css=fs.readFileSync('assets/styles.css','utf8'),rule=css.match(/#assetInfo \.infoSummary p\{([^}]+)\}/)[1];assert.ok(!rule.includes('line-clamp'));assert.ok(!rule.includes('overflow:hidden'));
+console.log('Brief asset summary PASS: complete business sentences, usable saved copy, no artificial pending status and no hidden paragraph content');

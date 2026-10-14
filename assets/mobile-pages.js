@@ -4,8 +4,35 @@
   const $=id=>document.getElementById(id);
   const token='orbit-'+Math.random().toString(36).slice(2);
   const navKey='orbitMobilePage';
-  let actions={},applying=false,subpage='menu',edge=null,swallowClickUntil=0;
+  let actions={},applying=false,backPending=false,homeReturnPending=false,parentReturnPending=null,subpage='menu',edge=null,swallowClickUntil=0;
   const dialogStack=[];
+  // Only entries in this directory are pages. Everything else is an operation.
+  const pageDirectory=Object.freeze({
+    home:{title:'主界面',parent:null},
+    deck:{title:'卡牌',parent:'home'},chart:{title:'K 线',parent:'deck'},
+    manager:{title:'分组管理',parent:'home'},
+    researchDialog:{title:'策略',parent:'home'},walletDialog:{title:'我的资产',parent:'home'},petNewsDialog:{title:'新闻',parent:'home'},petHelpDialog:{title:'指南',parent:'home'},
+    petLoreDialog:{title:'图鉴',parent:'home'},petWorldDialog:{title:'伙伴档案',parent:'petLoreDialog'},
+    authDialog:{title:'个人',parent:'home'},mobilePasswordPage:{title:'修改密码',parent:'authDialog'},
+    mobileMoreDialog:{title:'功能',parent:'home'},
+    'more:settings':{title:'显示设置',parent:'mobileMoreDialog'},
+    'more:search':{title:'搜索添加',parent:'mobileMoreDialog'},
+    'more:news':{title:'相关新闻',parent:'mobileMoreDialog'},
+    'more:insight':{title:'图表解读',parent:'mobileMoreDialog'},
+    groupManageDialog:{title:'管理分组',parent:'home'},
+    alertsDialog:{title:'提醒记录',parent:'home'},
+    infoDialog:{title:'标的资料',parent:'source'},petAssetSearchDialog:{title:'添加标的',parent:'manager'}
+  });
+  const pageId=r=>r.kind==='dialog'?(r.id==='mobileMoreDialog'&&r.sub&&r.sub!=='menu'?'more:'+r.sub:r.id):r.kind;
+  function parentRoute(r){
+    const parent=pageDirectory[pageId(r)]?.parent;
+    if(!parent||parent==='home')return {kind:'home'};
+    if(parent==='source')return r.source||{kind:'home'};
+    if(parent==='deck')return {...r,kind:'deck'};
+    if(parent==='manager')return r.source?.kind==='manager'?r.source:{kind:'manager',group:r.source?.group};
+    return {kind:'dialog',id:parent,sub:null,source:r.source||{kind:'home'}};
+  }
+
   const titles={authDialog:'个人',infoDialog:'标的资料',alertsDialog:'提醒记录',mobileMoreDialog:'功能',groupManageDialog:'分组',watchActionDialog:'自选操作',groupConfirmDialog:'确认',mobilePasswordPage:'修改密码'};
   const menu=[['search','搜索添加'],['settings','显示设置'],['news','相关新闻'],['insight','图表解读']];
   const moreNodes=[];
@@ -21,19 +48,20 @@
     return deckRoute();
   }
   function route(){
-    const dialog=topDialog();
+    const dialog=dialogStack.filter(d=>d.open&&pageDirectory[d.id]).at(-1);
     if(dialog)return {kind:'dialog',id:dialog.id,sub:dialog.id==='mobileMoreDialog'?subpage:dialog.id==='petNewsDialog'?($('petNewsPicker')?.hidden?'news':'picker'):null,source:surfaceRoute()};
     return surfaceRoute();
   }
   const key=r=>JSON.stringify(r);
+  // A history entry represents a page; its selected card or form values are state.
+  const pageKey=r=>JSON.stringify([pageId(r),r.kind==='dialog'?null:r.group||null]);
   function stateFor(r,depth){return {...(history.state||{}),[navKey]:{token,route:r,depth}}}
   function remember(replace=false){
     if(!mobile()||applying)return;
     const current=route(),old=history.state?.[navKey];
     if(replace||!old||old.token!==token)history.replaceState(stateFor(current,old?.token===token?old.depth:0),'');
     else if(key(old.route)!==key(current)){
-      // Swiping changes the current card, not the page to return to.
-      if((old.route.kind==='deck'&&current.kind==='deck'&&old.route.group===current.group)||(old.route.kind==='manager'&&current.kind==='manager'&&old.route.group===current.group)||(old.route.kind==='manager'&&['home','deck','chart'].includes(current.kind)))history.replaceState(stateFor(current,old.depth),'');
+      if(pageKey(old.route)===pageKey(current)||(old.route.kind==='manager'&&['home','deck','chart'].includes(current.kind)))history.replaceState(stateFor(current,old.depth),'');
       else history.pushState(stateFor(current,old.depth+1),'');
     }
   }
@@ -48,21 +76,34 @@
     if($('petDeck')?.classList.contains('deckChartMode'))actions.closeChart?.();
     else if($('petDeck')&&!$('petDeck').hidden)actions.closeDeck?.();
   }
-  function back(){
+  function returnHome(){
+    if(applying||backPending)return;
     const state=history.state?.[navKey];
-    if(state?.token===token&&state.depth>0)history.back();
-    else{directBack();remember(true)}
+    if(state?.token===token&&state.depth>0){
+      backPending=true;homeReturnPending=true;history.go(-state.depth);
+    }else{applyRoute({kind:'home'});history.replaceState(stateFor({kind:'home'},0),'')}
   }
-  function deckBack(){
-    if($('petDeck')?.classList.contains('deckChartMode'))actions.closeChart?.();
-    else actions.closeDeck?.();
-    remember(true);
+  function back(){
+    if(applying||backPending)return;
+    const dialog=topDialog();
+    if(dialog&&!pageDirectory[dialog.id]){dialog.close();remember(true);return}
+    const current=route(),parent=parentRoute(current);
+    if(parent.kind==='home'){returnHome();return}
+    const state=history.state?.[navKey];
+    if(state?.token===token&&state.depth>0){
+      backPending=true;parentReturnPending=parent;history.back();
+    }else{applyRoute(parent);history.replaceState(stateFor(parent,0),'')}
   }
-  function managerBack(){
-    actions.closeManager?.();
-    actions.closeDeck?.();
-    remember(true);
+  // Close an embedded page without navigating or replacing the parent document.
+  function closeLocalDialog(dialog){
+    if(!dialog?.open)return;
+    applying=true;backPending=false;homeReturnPending=false;parentReturnPending=null;
+    dialog.close();const i=dialogStack.indexOf(dialog);if(i>=0)dialogStack.splice(i,1);
+    const old=history.state?.[navKey];history.replaceState(stateFor(route(),Math.max(0,(old?.depth||0)-1)),'');
+    setTimeout(()=>{applying=false;remember(true)},0);
   }
+  function deckBack(){back()}
+  function managerBack(){back()}
   function ensureHeader(dialog){
     if(dialog.classList.contains('mobileSheet'))return;
     if(dialog.querySelector(':scope > .mobilePageHeader'))return;
@@ -94,7 +135,7 @@
     let dialog=$('mobilePasswordPage');
     if(!dialog){dialog=document.createElement('dialog');dialog.id='mobilePasswordPage';dialog.className='detailDialog';dialog.setAttribute('aria-label','修改密码');document.body.append(dialog);ensureHeader(dialog)}
     const form=$('passwordForm');if(!passwordMarker){passwordMarker=document.createComment('mobilePasswordReturn');form.before(passwordMarker);dialog.append(form)}
-    dialog.showModal();
+    dialog.tabIndex=-1;dialog.setAttribute('autofocus','');dialog.showModal();dialog.focus({preventScroll:true});
   }
   function restorePassword(){if(passwordMarker){passwordMarker.replaceWith($('passwordForm'));passwordMarker=null}}
   function activateDialog(dialog){
@@ -106,7 +147,7 @@
       applySurface(target.source||{kind:'home'});actions.openManager?.(target.group,target.draft||null,true);return;
     }
     actions.closeManager?.();
-    if(target.kind==='home'){actions.closeDeck?.();return}
+    if(target.kind==='home'){actions.closeDeck?.();actions.goHome?.();return}
     const deck=$('petDeck');
     if(deck?.hidden||deck?.dataset.groupId!==target.group||Number(deck?.dataset.index||0)!==(target.index||0))actions.openDeck?.(target.group,target.index||0);
     if(target.kind==='chart')actions.openChart?.();else actions.closeChart?.();
@@ -120,21 +161,22 @@
       if(dialog&&!dialog.open){
         if(target.id==='mobileMoreDialog')$('mobileMoreButton').click();
         else if(target.id==='mobilePasswordPage')openPassword();
-        else dialog.showModal();
+        else {dialog.showModal();dialog.focus({preventScroll:true});}
       }
       if(target.id==='mobileMoreDialog')setMorePage(target.sub||'menu');
-      if(target.id==='petNewsDialog'&&$('petNewsPicker'))$('petNewsPicker').hidden=target.sub!=='picker';
+      if(target.id==='petNewsDialog'&&$('petNewsPicker')){const picker=target.sub==='picker';$('petNewsPicker').hidden=!picker;$('petNewsList').hidden=picker;$('petNewsSearchButton').hidden=picker;}
     }else applySurface(target);
     setTimeout(()=>{applying=false;remember(true)},0);
   }
-  window.addEventListener('popstate',e=>{const state=e.state?.[navKey];if(mobile()&&state?.token===token)applyRoute(state.route)});
+  window.addEventListener('popstate',e=>{backPending=false;const state=e.state?.[navKey];if(mobile()&&state?.token===token){const home=homeReturnPending,parent=parentReturnPending;homeReturnPending=false;parentReturnPending=null;const target=home?{kind:'home'}:parent||state.route;if(home||parent)history.replaceState(stateFor(target,home?0:state.depth),'');applyRoute(target)}});
   document.addEventListener('click',e=>{
     if(!mobile())return;
     if(performance.now()<swallowClickUntil){e.preventDefault();e.stopImmediatePropagation();return}
     if(e.target.closest('#passwordDetails > summary')){e.preventDefault();openPassword();return}
     if(e.target.closest('#deckClose')){e.preventDefault();e.stopImmediatePropagation();deckBack();return}
     if(e.target.closest('.petManagerBack')){e.preventDefault();e.stopImmediatePropagation();managerBack();return}
-    const close=e.target.closest('dialog .dialogClose,[data-close],.mobilePageBack,#petNewsBack');
+    if(e.target.closest('#petNewsBack')){e.preventDefault();e.stopImmediatePropagation();returnHome();return}
+    const close=e.target.closest('dialog .dialogClose,[data-close],.mobilePageBack');
     if(close){e.preventDefault();e.stopImmediatePropagation();back()}
   },true);
   // 页内容保留原来的事件，观察开关状态来维护浏览器返回栈。
@@ -173,5 +215,5 @@
   document.addEventListener('pointerup',e=>endEdge(e),true);
   document.addEventListener('pointercancel',e=>endEdge(e,true),true);
   window.addEventListener('resize',()=>{if(!mobile()){edge=null;if($('mobilePasswordPage')?.open)$('mobilePasswordPage').close();for(const d of dialogStack)d.querySelector(':scope > .mobilePageHeader')?.remove();restorePassword();resetMore()}else{for(const d of dialogStack)activateDialog(d);remember(true)}});
-  window.MarketMobilePages=Object.freeze({prepareDialog(){remember()},setActions(value){actions=value;for(const dialog of document.querySelectorAll('dialog[open]')){if(!dialogStack.includes(dialog))dialogStack.push(dialog);if(mobile())activateDialog(dialog)}remember(true)},showSearch(){if(mobile()){setMorePage('search');remember()}},back,deckBack,managerBack});
+  window.MarketMobilePages=Object.freeze({prepareDialog(){remember()},setActions(value){actions=value;for(const dialog of document.querySelectorAll('dialog[open]')){if(!dialogStack.includes(dialog))dialogStack.push(dialog);if(mobile())activateDialog(dialog)}remember(true)},showSearch(){if(mobile()){setMorePage('search');remember()}},pageDirectory,closeLocalDialog,back,deckBack,managerBack});
 })();

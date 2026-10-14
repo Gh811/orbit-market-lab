@@ -23,17 +23,13 @@ async function loadNews(){
     }).slice(0,25):[];
     if(!rows.length){notice.textContent='目前没有找到 '+symbol+' 的相关新闻。';return}
     notice.textContent='共 '+rows.length+' 条 · '+new Date().toLocaleString('zh-CN')+' 更新';
-    for(const item of rows){
-      const article=document.createElement('article');article.className='newsCard';
-      const meta=document.createElement('div');meta.className='newsMeta';
+    rows.forEach((item,index)=>{
       const when=Number(item.datetime)?new Date(Number(item.datetime)*1000).toLocaleString('zh-CN'):'';
-      meta.textContent=[item.source,when].filter(Boolean).join(' · ');
-      const title=document.createElement('h2');
-      const link=document.createElement('a');link.href=item.url;link.target='_blank';link.rel='noopener noreferrer';link.textContent=item.headline;
-      title.append(link);article.append(meta,title);
-      if(item.summary){const summary=document.createElement('p');summary.textContent=new DOMParser().parseFromString(String(item.summary),'text/html').body.textContent.trim().slice(0,380);article.append(summary)}
-      cards.append(article);
-    }
+      const meta=[item.source,when].filter(Boolean).join(' · ');
+      const summaryText=item.summary?new DOMParser().parseFromString(String(item.summary),'text/html').body.textContent.trim().slice(0,380):'';
+      const article=window.MarketNewsPaper.create(item,{index,meta,summaryText});
+      if(article){article.classList.add('newsCard');cards.append(article)}
+    });
   }catch(error){notice.textContent=error.name==='AbortError'?'新闻请求超时，请稍后重试。':'新闻暂不可用：'+error.message}
   finally{clearTimeout(timer)}
 }

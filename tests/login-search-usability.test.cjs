@@ -19,6 +19,6 @@ vm.createContext(c);vm.runInContext(source.slice(source.indexOf('const normalize
  c.window.visualViewport.height=450;c.syncAuthInputLayout();assert.equal(active,false,'keyboard open moves nothing');c.window.visualViewport.height=800;c.syncAuthInputLayout();assert.equal(active,false);
  assert.equal(c.matchCatalog('比特币')[0].symbol,'BTC');assert.equal(c.matchCatalog('ＢＴＣ／ＵＳＤＴ')[0].symbol,'BTC');assert.equal(c.matchCatalog('BTC-USDT-SWAP')[0].symbol,'BTC');
  assert.equal(c.matchCatalog('半导体 看跌')[0].symbol,'SOXS');assert.equal(c.matchCatalog('Semiconductor Bear')[0].symbol,'SOXS');assert.equal(c.matchCatalog('semiconductor').length,11);
- assert.equal(c.matchCatalog('完全不存在的标的').length,0);assert.equal(c.matchCatalog('BTCC')[0].symbol,'BTC');
+ assert(c.matchCatalog('完全不存在的标的').every(row=>row.matchType==='related'&&c.instrumentCatalog.some(item=>item.symbol===row.symbol)),'broad fallback stays labelled and uses only real catalogue entries');assert.equal(c.matchCatalog('BTCC')[0].symbol,'BTC');
  console.log('Login/search usability: username avatar retained, decoded swaps reject stale result, keyboard leaves layout still, Chinese/pair/multiword matches, expanded results, no unrelated local fallback PASS');
 })().catch(e=>{console.error(e);process.exitCode=1});

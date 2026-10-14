@@ -1,0 +1,119 @@
+/* Identical newspaper previews, with real source metadata and original links. */
+.petNewsDialog #petNewsList{display:flex;flex-direction:column;align-items:stretch;gap:22px;padding:20px 18px calc(env(safe-area-inset-bottom) + 28px)}
+.newsPage .newsCards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
+.orbitNewsPaper,html[data-theme] .newsCard.orbitNewsPaper,.petNewsItem.orbitNewsPaper{position:relative;box-sizing:border-box;width:100%;max-width:480px;height:292px;min-height:292px;max-height:292px;flex:0 0 292px;margin:0 auto;padding:0;overflow:hidden;border:1px solid #ad9470;border-radius:2px;background:repeating-linear-gradient(0deg,#30383904 0,#30383904 1px,transparent 1px,transparent 4px),linear-gradient(110deg,#e5e7e3,#f1f2ee 45%,#dfe3df);box-shadow:inset 0 0 28px #9c743514,0 5px 0 -2px #cbb992,0 9px 18px #00000030;color:#283034;transform:none}
+.orbitNewsPaper .newsPaperLink,html[data-theme] .newsCard.orbitNewsPaper a.newsPaperLink{box-sizing:border-box;display:grid;grid-template-rows:38px 30px minmax(0,1fr) 22px;gap:10px;width:100%;height:100%;padding:18px;color:#283034;text-decoration:none;font-family:"Songti SC","STSong","SimSun",Georgia,serif;line-height:1.5}
+.orbitNewsPaper .newsPaperMasthead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0;padding:0 0 8px;border-bottom:3px double #626c6e;min-width:0}
+.orbitNewsPaper .newsPaperMasthead strong{font-size:24px;font-weight:700;letter-spacing:.08em;white-space:nowrap}
+.orbitNewsPaper .newsPaperMasthead span{font:9px Georgia,serif;letter-spacing:.09em;color:#667173;white-space:nowrap}
+.orbitNewsPaper .newsPaperMeta{display:block;min-width:0;margin:0;color:#667173;font-size:11px;line-height:15px;overflow-wrap:anywhere}
+.orbitNewsPaper .newsPaperContent{min-width:0;min-height:0;overflow:hidden}
+.orbitNewsPaper .newsPaperHeadline{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:5;overflow:hidden;margin:0;color:#283034;font-family:inherit;font-size:18px;font-weight:700;line-height:24px;overflow-wrap:anywhere}
+.orbitNewsPaper.newsPaperDense .newsPaperHeadline{font-size:15px;line-height:20px;-webkit-line-clamp:6}
+.orbitNewsPaper.newsPaperHasExcerpt .newsPaperHeadline{font-size:17px;line-height:22px;-webkit-line-clamp:3}
+.orbitNewsPaper .newsPaperExcerpt{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;margin:8px 0 0;color:#596366;font-family:inherit;font-size:12px;line-height:17px;overflow-wrap:anywhere}
+.orbitNewsPaper .newsPaperFooter{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0;padding:6px 0 0;border-top:1px solid #b6bfbd;color:#667173;font-size:10px;line-height:14px;letter-spacing:.04em}
+.newsPage .newsCard.orbitNewsPaper .newsPaperLink:hover{color:#283034}
+.orbitNewsPaper .newsPaperLink:focus-visible{outline:2px solid #856f4a;outline-offset:-5px}
+html[data-device="phone"] .petNewsDialog{background:linear-gradient(180deg,#162c4666,#1c355477),url('/assets/icons/crypto/crystalbg.png?v=20261012-crystal43') center/cover no-repeat #263c58}
+.petNewsDialog .petNewsHead{background:#243a53;color:#edf3fa;border-bottom:1px solid #afcbdc24}
+@media(max-width:720px){.newsPage .newsCards{grid-template-columns:minmax(0,1fr)}}
+
+/* The guide is one continuous handbook, rather than separate floating tiles. */
+#petHelpDialog .petHelpPanel{box-sizing:border-box;width:calc(100% - 36px);max-width:444px;margin:18px auto calc(env(safe-area-inset-bottom) + 24px);padding:22px 20px;background:linear-gradient(110deg,#e5d6b6,#f1e6cc 45%,#e9dbbc);border:1px solid #ad9470;border-radius:2px;box-shadow:inset 0 0 28px #9c743514,0 9px 18px #00000025;font-family:"Songti SC","STSong","SimSun",Georgia,serif}
+#petHelpDialog .petHelpIntro{margin:0 0 18px;padding-bottom:18px;border-bottom:3px double #8c7759;color:#705c43;font-size:14px;line-height:1.8}
+#petHelpDialog .petHelpSteps{display:block;margin:0;padding:0}
+#petHelpDialog .petHelpSteps li{margin:0;padding:18px 0 18px 34px;border:0;border-bottom:1px solid #bbaa8a7a;border-radius:0;background:none}
+#petHelpDialog .petHelpSteps li:last-child{padding-bottom:0;border-bottom:0}
+#petHelpDialog .petHelpSteps li:before{top:20px;left:0;width:24px;height:auto;border:0;border-radius:0;color:#9a7c52;font-size:13px;content:counter(guide,decimal-leading-zero)}
+#petHelpDialog .petHelpSteps h3{color:#493c2b;font-size:16px;line-height:1.5}
+#petHelpDialog .petHelpSteps p{color:#6b5943;font-size:13px;line-height:1.9}
+#petHelpDialog .petHelpAction{color:#4c3d29;font-weight:700}
+#petHelpDialog .mobilePageHeader{background:#243a53;color:#edf3fa}
+
+.orbitNewsPaper .newsPaperLink.touchPressed,.orbitNewsPaper .newsPaperLink.touchReleased{animation:none;scale:1;transform:none;filter:none}
+
+/* Each story is its own readable sheet; longer news may grow inside the list. */
+.petNewsDialog #petNewsList{min-width:0;gap:24px}
+.orbitNewsPaper,html[data-theme] .newsCard.orbitNewsPaper,.petNewsItem.orbitNewsPaper{height:auto;min-height:292px;max-height:none;flex:0 0 auto;overflow:visible}
+.orbitNewsPaper .newsPaperLink,html[data-theme] .newsCard.orbitNewsPaper a.newsPaperLink{height:auto;min-height:290px;grid-template-rows:38px auto minmax(120px,auto) 22px;gap:10px}
+.orbitNewsPaper .newsPaperMeta{line-height:18px;min-height:18px}
+.orbitNewsPaper .newsPaperContent{overflow:visible}
+.orbitNewsPaper .newsPaperHeadline,.orbitNewsPaper.newsPaperDense .newsPaperHeadline,.orbitNewsPaper.newsPaperHasExcerpt .newsPaperHeadline{display:block;-webkit-line-clamp:unset;overflow:visible;font-size:18px;line-height:26px}
+.orbitNewsPaper .newsPaperExcerpt{font-size:13px;line-height:20px;-webkit-line-clamp:4;margin-top:12px}
+.petNewsDialog .petNewsEmpty{color:#e0eaf4}
+
+/* Each story sits on its own complete portrait newspaper sheet. */
+.orbitNewsPaper,html[data-theme] .newsCard.orbitNewsPaper,.petNewsItem.orbitNewsPaper{height:var(--news-sheet-height,420px);min-height:var(--news-sheet-height,420px);max-height:var(--news-sheet-height,420px);flex-basis:var(--news-sheet-height,420px)}
+.petNewsDialog #petNewsList,.sidebarNewsList,.newsCards{--news-sheet-height:clamp(340px,62vh,480px)}
+.sidebarNewsList{display:flex;flex-direction:column;gap:22px;padding:8px 4px 20px}
+.orbitNewsPaper .newsPaperLink{grid-template-rows:38px 30px minmax(0,1fr) 22px}
+.orbitNewsPaper.newsPaperHasExcerpt .newsPaperHeadline{-webkit-line-clamp:4}
+.orbitNewsPaper .newsPaperExcerpt{font-size:14px;line-height:23px;-webkit-line-clamp:7;margin-top:14px}
+html[data-device="phone"] .petNewsDialog{background:transparent}
+/* The guide reserves six rows inside the available viewport. */
+html[data-theme] #petHelpDialog[open],#petHelpDialog[open]{display:flex;flex-direction:column;overflow:hidden;padding:0;height:var(--phone-layout-height,100dvh);max-height:none}
+#petHelpDialog:not([open]){display:none}
+#petHelpDialog .mobilePageHeader{flex-shrink:0}
+#petHelpDialog .petHelpPanel{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;margin:12px auto calc(env(safe-area-inset-bottom) + 12px);padding:14px 16px}
+#petHelpDialog .petHelpIntro{flex:none;font-size:12px;line-height:1.5;margin:0 0 8px;padding-bottom:8px}
+#petHelpDialog .petHelpSteps{flex:1;min-height:0;display:grid;grid-template-rows:repeat(6,minmax(0,1fr))}
+#petHelpDialog .petHelpSteps li{display:flex;flex-direction:column;justify-content:center;min-height:0;padding:4px 0 4px 27px}
+#petHelpDialog .petHelpSteps li:before{top:50%;transform:translateY(-50%);font-size:11px}
+#petHelpDialog .petHelpSteps h3{font-size:14px;line-height:1.4;margin:0 0 3px}
+#petHelpDialog .petHelpSteps p{font-size:12px;line-height:1.5}
+@media(max-height:600px){#petHelpDialog .petHelpPanel{padding:10px 12px;margin-top:8px;margin-bottom:8px}#petHelpDialog .petHelpIntro{display:none}#petHelpDialog .petHelpSteps h3{font-size:12px;margin-bottom:2px}#petHelpDialog .petHelpSteps p{font-size:11px;line-height:1.35}}
+html[data-theme] .orbitNewsPaper .newsPaperHeadline{color:#283034}
+html[data-theme] .orbitNewsPaper .newsPaperExcerpt{color:#596366}
+html[data-theme] .orbitNewsPaper .newsPaperMeta,html[data-theme] .orbitNewsPaper .newsPaperFooter{color:#667173}
+#petHelpDialog .mobilePageTitle,#petHelpDialog .mobilePageBack{color:#edf3fa}
+.petNewsDialog[open]{display:flex;flex-direction:column;overflow:hidden}
+.petNewsDialog .petNewsHead{flex:none}
+.petNewsDialog #petNewsList{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.petNewsDialog #petNewsList[hidden]{display:none!important}
+/* Keep the inner layout the same height as the complete sheet. */
+.orbitNewsPaper,html[data-theme] .newsCard.orbitNewsPaper,.petNewsItem.orbitNewsPaper{overflow:hidden}
+.orbitNewsPaper .newsPaperLink,html[data-theme] .newsCard.orbitNewsPaper a.newsPaperLink{height:100%;min-height:0;grid-template-rows:38px 36px minmax(0,1fr) 22px}
+.orbitNewsPaper .newsPaperContent{overflow:hidden}
+.orbitNewsPaper .newsPaperHeadline,.orbitNewsPaper.newsPaperDense .newsPaperHeadline,.orbitNewsPaper.newsPaperHasExcerpt .newsPaperHeadline{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden;font-size:18px;line-height:26px}
+@media(max-height:500px){#petHelpDialog .petHelpSteps li{padding-top:2px;padding-bottom:2px}#petHelpDialog .petHelpSteps h3{font-size:11px;line-height:1.3;margin-bottom:1px}#petHelpDialog .petHelpSteps p{font-size:10.5px;line-height:1.25}}
+
+/* Compact folded newspapers, using the same parchment as the guide.
+   ID-scoped rules override the shared asset-picker list rule, which contains an ID. */
+.petNewsDialog #petNewsList{gap:16px;padding:14px 18px calc(env(safe-area-inset-bottom,0px) + 26px)}
+.newsPage .newsCards,.sidebarNewsList{gap:16px}
+#petNewsList .petNewsItem.orbitNewsPaper,#newsCards .orbitNewsPaper,.sidebarNewsList .orbitNewsPaper{
+ position:relative;box-sizing:border-box;width:100%;max-width:480px;height:96px;min-height:96px;max-height:96px;flex:0 0 96px;margin:0 auto;padding:0;
+ border:1px solid #ad9470;border-radius:2px;overflow:visible;color:#3b2d1e;
+ background:repeating-linear-gradient(0deg,#88704905 0,#88704905 1px,transparent 1px,transparent 4px),linear-gradient(110deg,#e5d6b6,#f1e6cc 45%,#e9dbbc);
+ box-shadow:inset 0 0 18px #9c74350c,0 2px 0 -1px #deccaa,0 4px 0 -2px #bda780,0 6px 9px #0003;transform:none
+}
+#petNewsList .petNewsItem.orbitNewsPaper:before,#newsCards .orbitNewsPaper:before,.sidebarNewsList .orbitNewsPaper:before{content:'';position:absolute;top:3px;left:5px;right:5px;border-top:1px solid #fff4;pointer-events:none}
+#petNewsList .petNewsItem.orbitNewsPaper:after,#newsCards .orbitNewsPaper:after,.sidebarNewsList .orbitNewsPaper:after{content:'';position:absolute;left:3px;right:3px;bottom:-4px;height:3px;background:#856b4655;box-shadow:0 2px 4px #0002;pointer-events:none}
+#petNewsList .petNewsItem.orbitNewsPaper .newsPaperLink,#newsCards .orbitNewsPaper a.newsPaperLink,.sidebarNewsList .orbitNewsPaper .newsPaperLink{
+ box-sizing:border-box;display:grid;width:100%;height:100%;min-height:0;min-width:0;padding:8px 12px;
+ grid-template-columns:minmax(0,1fr);grid-template-rows:16px 40px 14px;grid-template-areas:'masthead' 'headline' 'meta';gap:4px;align-content:center;
+ color:#3b2d1e;font-family:'Songti SC','STSong','SimSun',Georgia,serif;text-decoration:none;overflow:hidden;border-radius:inherit
+}
+#petNewsList .newsPaperMasthead,#newsCards .newsPaperMasthead,.sidebarNewsList .newsPaperMasthead{grid-area:masthead;display:flex;align-items:center;justify-content:space-between;min-width:0;margin:0;padding:0 0 3px;border-bottom:1px solid #92764a80;line-height:12px}
+#petNewsList .newsPaperMasthead strong,#newsCards .newsPaperMasthead strong,.sidebarNewsList .newsPaperMasthead strong{font-size:10px;line-height:12px;letter-spacing:.09em;color:#5b4126}
+#petNewsList .newsPaperMasthead span,#newsCards .newsPaperMasthead span,.sidebarNewsList .newsPaperMasthead span{font-size:8px;line-height:12px;color:#705638}
+#petNewsList .newsPaperContent,#newsCards .newsPaperContent,.sidebarNewsList .newsPaperContent{grid-area:headline;min-width:0;min-height:0;overflow:hidden;align-self:center}
+#petNewsList .newsPaperHeadline,#newsCards .newsPaperHeadline,.sidebarNewsList .newsPaperHeadline{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;max-height:40px;overflow:hidden;margin:0;font-size:15px;font-weight:700;line-height:20px;color:#342619;text-shadow:none;opacity:1}
+#petNewsList .newsPaperMeta,#newsCards .newsPaperMeta,.sidebarNewsList .newsPaperMeta{grid-area:meta;display:block;min-width:0;min-height:0;height:14px;margin:0;line-height:14px;font-size:10px;color:#665032;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:1}
+#petNewsList .newsPaperExcerpt,#newsCards .newsPaperExcerpt,.sidebarNewsList .newsPaperExcerpt{display:none}
+html[data-device='phone'] .newsPage .newsCards{grid-template-columns:minmax(0,1fr)}
+@media(max-width:350px){#petNewsList .petNewsItem.orbitNewsPaper .newsPaperLink,#newsCards .orbitNewsPaper a.newsPaperLink{padding-left:10px;padding-right:10px}}
+
+/* Each exposed newspaper sits behind its own rack lip. */
+#petNewsDialog #petNewsList{gap:20px;padding:18px 22px calc(env(safe-area-inset-bottom,0px) + 30px)}
+#petNewsDialog #petNewsList .orbitNewsPaper{width:100%;max-width:480px;height:112px;min-height:112px;max-height:112px;flex:0 0 112px;margin:0 auto;padding:0;border:1px solid #ac946e;border-radius:1px 1px 0 0;background:repeating-linear-gradient(0deg,#88704908 0,#88704908 1px,transparent 1px,transparent 4px),linear-gradient(100deg,#dbc69d,#f1e6cc 22%,#e9dab7 73%,#d4be93);box-shadow:3px -3px 0 -1px #ebddbc,5px -5px 0 -2px #ae9872,0 6px 12px #0004;overflow:visible;transform:rotate(-.5deg);color:#342619}
+
+#petNewsDialog #petNewsList .orbitNewsPaper:before{display:block;content:'';position:absolute;inset:0;pointer-events:none;border:0;background:linear-gradient(90deg,transparent 48%,#a68a5528 49.5%,#fff7 50%,transparent 51%),linear-gradient(0deg,#aa855229,transparent 24%);z-index:1}
+#petNewsDialog #petNewsList .orbitNewsPaper:after{display:block;content:'';position:absolute;left:-8px;right:-8px;bottom:-5px;height:13px;background:linear-gradient(#405565,#1a2b39 45%,#14212e);border:1px solid #7894a64a;border-radius:2px;box-shadow:0 3px 5px #0005,inset 0 1px #b0c3ce33;pointer-events:none;z-index:2}
+#petNewsDialog #petNewsList .newsPaperLink{height:100%;min-height:0;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:24px 44px 14px;grid-template-areas:'masthead' 'headline' 'meta';gap:5px;padding:8px 13px 12px;color:#342619;box-sizing:border-box}
+#petNewsDialog #petNewsList .newsPaperMasthead{display:flex;grid-area:masthead;align-items:center;justify-content:space-between;height:24px;border-top:2px solid #6b5337;border-bottom:1px solid #6b5337;color:#4c3924}
+#petNewsDialog #petNewsList .newsPaperMasthead strong{font:900 17px/22px 'Songti SC','Noto Serif SC',serif;letter-spacing:3px}
+#petNewsDialog #petNewsList .newsPaperMasthead span{font:700 8px/1.2 Georgia,serif;letter-spacing:1px}
+#petNewsDialog #petNewsList .newsPaperHeadline{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;max-height:44px;font:700 16px/22px 'Songti SC','Noto Serif SC',serif;color:#342619;overflow:hidden}
+#petNewsDialog #petNewsList .newsPaperMeta{height:14px;line-height:14px;font-size:10px;color:#665032;white-space:nowrap}

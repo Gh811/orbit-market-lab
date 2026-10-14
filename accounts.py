@@ -94,12 +94,37 @@ def clean_state(raw):
     swing = raw.get("swing")
     timeframe = raw.get("tf")
     scheme = raw.get("scheme")
+    wallet = []
+    raw_wallet = raw.get("wallet") if isinstance(raw.get("wallet"), list) else []
+    wallet_ids = set()
+    for row in raw_wallet[:200]:
+        if not isinstance(row, dict):continue
+        name, identity = row.get("name"), row.get("id")
+        quantity, price = row.get("quantity"), row.get("price")
+        if not isinstance(name,str) or not 1<=len(name.strip())<=64:continue
+        if not isinstance(identity,str) or not re.fullmatch(r"[a-zA-Z0-9-]{1,64}",identity) or identity in wallet_ids:continue
+        if any(type(value) not in (int,float) or not math.isfinite(value) or not 0<value<1e12 for value in (quantity,price)):continue
+        if row.get("currency") not in ("CNY","USD","USDT") or row.get("category") not in ("crypto","stock","fund","other"):continue
+        wallet.append({"id":identity,"name":name.strip(),"quantity":quantity,"price":price,"currency":row["currency"],"category":row["category"]})
+        wallet_ids.add(identity)
     return {"assets": assets, "groups": groups, "activeGroup": active_group, "selected": selected,
             "tf": timeframe if isinstance(timeframe, str) and timeframe in TIMEFRAMES else "1d",
             "scheme": scheme if isinstance(scheme, str) and scheme in ("redUp", "greenUp") else "redUp",
             "swing": swing if swing in (0.5, 1, 2, 3, 5) else 1,
             "toggles": {name: toggles.get(name) is not False for name in ("volume", "levels", "fib", "ma")},
-            "targets": targets}
+            "targets": targets,"wallet":wallet}
+
+
+def default_account_state():
+    groups=[{"id":"main","name":"自选","petKind":0,"petSlot":0},
+            {"id":"gus7","name":"美股","petKind":1,"petSlot":1},
+            {"id":"gashare","name":"A股","petKind":6,"petSlot":2}]
+    assets=[]
+    for group,kind,symbols in [("main","swap",["BTC","ETH"]),
+        ("gus7","swap",["AAPL","MSFT","GOOGL","AMZN","NVDA","META","TSLA"]),
+        ("gashare","ashare",["SZ002384","SH603986","SZ300308","SH600519"])]:
+        assets.extend({"type":kind,"symbol":symbol,"groupId":group,"pinned":False} for symbol in symbols)
+    return clean_state({"groups":groups,"assets":assets,"activeGroup":"main","selected":"swap:BTC"})
 
 
 class AccountStore:
@@ -167,9 +192,10 @@ class AccountStore:
         salt = secrets.token_bytes(16)
         try:
             with self._db() as db:
-                cursor = db.execute("INSERT INTO users(username, username_key, salt, password_hash, space_id, public_id, avatar_kind) VALUES(?,?,?,?,?,?,?)",
+                initial=json.dumps(default_account_state(),ensure_ascii=False,separators=(',',':'))
+                cursor = db.execute("INSERT INTO users(username, username_key, salt, password_hash, space_id, public_id, avatar_kind, state, state_updated) VALUES(?,?,?,?,?,?,?,?,?)",
                                     (username, username.casefold(), salt, self._password_hash(password, salt),
-                                     secrets.token_urlsafe(12), "U" + secrets.token_hex(10).upper(), avatar_kind))
+                                     secrets.token_urlsafe(12), "U" + secrets.token_hex(10).upper(), avatar_kind, initial, time.time_ns()//1_000_000))
                 user_id = cursor.lastrowid
         except sqlite3.IntegrityError as exc:
             raise ValueError("用户名已被使用") from exc

@@ -1,11 +1,8 @@
-const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
-const source=fs.readFileSync(require('node:path').join(__dirname,'../assets/app.js'),'utf8');
-const local=new Map([['market-data','old'],['account','keep']]),session=new Map();let hide,cleared=0;
-const storage=map=>({getItem:k=>map.get(k)||null,setItem:(k,v)=>map.set(k,v),removeItem:k=>map.delete(k)});
-const c={localStorage:storage(local),sessionStorage:storage(session),clearTimeout(){},candleSessionTimer:1,CANDLE_SESSION:'candles',window:{addEventListener:(event,fn)=>hide=fn,MarketData:{clearTransientCache:()=>cleared++}}};
-vm.createContext(c);vm.runInContext(source.slice(source.indexOf('const transientCacheKeys='),source.indexOf("const PROFILE_CACHE="))+'\nglobalThis.cache=transientCacheStorage;',c);
-c.cache.getItem('market-data');assert.equal(local.has('market-data'),false);assert.equal(local.get('account'),'keep');
-c.cache.setItem('market-data','warm');session.set('candles','warm');hide({persisted:true});assert.equal(session.get('market-data'),'warm');
-hide({persisted:false});assert.equal(session.size,0);assert.equal(cleared,1);assert.equal(local.get('account'),'keep');
-c.cache.setItem('market-data','late');assert.equal(session.size,0);
-console.log('Transient cache: migrated market keys only, back-forward page preserved, exit clears candles/data, late writes blocked, account kept: PASS');
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),{createPublicCache}=require('../assets/data.js');
+const source=fs.readFileSync('assets/app.js','utf8');class Storage{constructor(){this.rows=new Map()}get length(){return this.rows.size}key(i){return [...this.rows.keys()][i]??null}getItem(k){return this.rows.get(k)??null}setItem(k,v){this.rows.set(k,v)}removeItem(k){this.rows.delete(k)}}
+const disk=new Storage(),session=new Storage(),events={};disk.setItem('account','keep');let cleared=0;
+const c={localStorage:disk,sessionStorage:session,candleSessionTimer:1,clearTimeout(){},window:{MarketData:{createPublicCache,clearTransientCache(){cleared++}},addEventListener:(name,callback)=>events[name]=callback}};
+vm.createContext(c);vm.runInContext(source.slice(source.indexOf('let pageCacheClosed='),source.indexOf("const PROFILE_CACHE="))+'\nglobalThis.cache=publicMarketCache;',c);
+c.cache.setItem('market_profiles_v29',JSON.stringify({'ashare:SZ000651':{summary:'真实资料'}}));events.pagehide({persisted:true});assert.equal(cleared,0);
+events.pagehide({persisted:false});assert.equal(cleared,1);assert.match(createPublicCache(disk,new Storage()).getItem('market_profiles_v29'),/真实资料/);assert.equal(disk.getItem('account'),'keep');assert.equal(vm.runInContext('pageCacheClosed',c),true);
+console.log('Page close PASS: request memory released, public on-phone records retained, private account state untouched, closed page tracked');

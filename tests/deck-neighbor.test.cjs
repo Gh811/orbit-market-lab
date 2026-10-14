@@ -1,7 +1,8 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const source=fs.readFileSync(require('node:path').join(__dirname,'../assets/app.js'),'utf8');
 const layers=Object.fromEntries(['deckPrevious','deckNext'].map(id=>[id,{inactive:false,style:{setProperty(){assert.fail('Neighbor content must not fade according to swipe distance')}},classList:{toggle(k,v){layers[id].inactive=v}}}]));
-const ctx={window:{innerWidth:428},$:id=>id==='deckCard'?{clientWidth:372}:layers[id]};
+const core={};const card={clientWidth:372,style:{setProperty:(key,value)=>core[key]=value}};
+const ctx={window:{innerWidth:428},$:id=>id==='deckCard'?card:layers[id]};
 vm.createContext(ctx);vm.runInContext(source.slice(source.indexOf('function deckNeighborReveal('),source.indexOf('const deckColorStore=')),ctx);
 for(const dx of [1,30,150,186,220,300,-1,-30,-150,-186,-220,-300]){
   ctx.deckNeighborReveal(dx);
@@ -50,3 +51,13 @@ assert.match(edgeCSS,/transform:translate\(0,9px\) scaleX\(1\.015\)/,'centered c
 assert.match(edgeCSS,/\.deckNeighbor\.previous,\s*#petDeck:not\(\.deckChartMode\) \.deckNeighbor\.next\{z-index:1\}/,'both incoming directions use the same layer');
 assert.match(edgeCSS,/box-shadow:0 9px 14px/,'outer shadow has no fixed right bias');
 console.log('Card edges: centered symmetric thickness and shadow, equal neighbor layers, mirrored swipe rotation and equal depth PASS');
+
+for(const distance of [15,60,186,300,372]){
+ ctx.deckNeighborReveal(-distance);const right=Number.parseFloat(core['--deck-core-x']);
+ ctx.deckNeighborReveal(distance);const left=Number.parseFloat(core['--deck-core-x']);
+ assert.ok(right>0&&left<0,'slab projects on the visible edge for either direction');assert.ok(Math.abs(right+left)<.001,'equal swipe distances expose equal mirrored thickness');assert.ok(Math.abs(left)<=6.14,'projected edge stays inside physical thickness');
+}
+ctx.deckNeighborReveal(0);assert.equal(Number.parseFloat(core['--deck-core-x']),0,'resting slab remains centered');
+const finalEdge=css.slice(css.indexOf('/* Both exposed edges'));
+assert.match(finalEdge,/translate\(var\(--deck-core-x,0px\),7px\) scaleX\(1\.008\)/);assert.match(finalEdge,/box-shadow:0 9px 0/);
+console.log('Mirrored slab projection PASS: same edge width in both directions, centered at rest, bounded thickness and neutral outer shadow');

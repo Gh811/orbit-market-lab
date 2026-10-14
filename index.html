@@ -13,15 +13,17 @@
   </title>
   <link rel="icon" type="image/svg+xml" href="/assets/icon.svg"/>
   <link rel="apple-touch-icon" href="/assets/icon.png"/>
-  <link rel="manifest" href="/assets/site.webmanifest?v=20261012-native-portrait40"/>
+  <link rel="manifest" href="/assets/site.webmanifest?v=20261014-full-wallpaper115"/>
   <meta name="apple-mobile-web-app-title" content="星轨"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-  <meta name="theme-color" content="#101d2a"/>
+  <meta name="theme-color" content="#263c58"/>
   <link rel="preload" as="image" href="/assets/icons/crypto/spacerabbit.png?v=20261012-crystal43" fetchpriority="high"/>
-  <script src="/assets/theme.js?v=20261013-live-mobile-height96"></script>
-  <link data-entry-critical rel="stylesheet" href="/assets/mobile-pages.css?v=20261013-market-identity-fix82"/>
-  <link data-entry-style href="/assets/styles.css?v=20261013-uniform-summary83" rel="stylesheet"/>
+  <script src="/assets/theme.js?v=20261014-helmet-defaults131"></script>
+  <link data-entry-critical rel="stylesheet" href="/assets/mobile-pages.css?v=20261014-full-wallpaper115"/>
+  <link data-entry-style href="/assets/styles.css?v=20261014-wallet129" rel="stylesheet"/>
+  <link data-entry-style href="/assets/wallet.css?v=20261014-home-capsule133" rel="stylesheet"/>
+ <link data-entry-style rel="stylesheet" href="/assets/news-paper.css?v=20261014-paper-direction115">
  </head>
  <body class="authLocked accountOverlay">
   <section id="bootCover" class="bootCover" aria-label="星轨正在加载">
@@ -30,10 +32,10 @@
     <img class="bootCompanion" src="/assets/icons/crypto/spacerabbit.png?v=20261012-crystal43" width="384" height="384" alt="" loading="eager" decoding="async" fetchpriority="high"/>
    </div>
    <p class="bootEyebrow">ORBIT · 星轨</p><h2>你的星际看盘伙伴</h2>
-   <div id="bootProgress" class="bootProgress" role="progressbar" aria-label="页面准备进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="6"><span id="bootProgressFill"></span></div>
+   <div class="bootMeter"><div id="bootProgress" class="bootProgress" role="progressbar" aria-label="页面准备进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="6"><span id="bootProgressFill"></span></div><p id="bootPercent" class="bootPercent" aria-hidden="true">6%</p></div>
    <p id="bootStatus" class="bootStatus" role="status">正在准备星轨…</p>
    <p id="bootDetails" class="bootDetails">初始化页面与移动端环境</p>
-   <button id="bootRetry" type="button">重新加载</button>
+   <button id="bootRetry" type="button" hidden>重新加载</button>
   </section>
   <div class="shell" data-entry-shell hidden>
    <header class="mast">
@@ -360,8 +362,10 @@
      </form>
      <div class="authSigned" id="authSigned" hidden>
       <header class="mobilePasswordHeading"><button type="button" data-close="authDialog" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.5 5 8.5 12 15.5 19"/></svg></button><strong>修改密码</strong></header>
-      <p>用户名：<strong id="authSignedName"></strong></p>
-      <p>用户 ID：<code id="accountId">—</code></p>
+      <div class="accountIdentityPlate" aria-label="用户身份">
+       <p><span>用户名：</span><strong id="authSignedName"></strong></p>
+       <p><span>用户 ID：</span><code id="accountId">—</code></p>
+      </div>
       <details id="accountAvatarDetails" hidden><summary>修改个人形象</summary>
        <p>当前形象：<strong id="accountAvatarCurrent"></strong></p>
        <div id="accountAvatarChoices" class="authPetChoices" role="group" aria-label="选择个人形象"></div>
@@ -420,10 +424,12 @@
   <script defer="" src="/assets/strategy.js"></script>
   <script defer="" src="/assets/gesture.js"></script>
   <script defer="" src="/assets/audit.js"></script>
-  <script defer src="/assets/data.js?v=20261012-card-cache37"></script>
-  <script defer src="/assets/touch.js?v=20261012-audio-resume39"></script>
-  <script defer src="/assets/mobile-pages.js?v=20261012-core-back37"></script>
-  <script defer="" src="/assets/app.js?v=20261013-uniform-summary83">
+  <script defer src="/assets/data.js?v=20261014-persistent-profile122"></script>
+  <script defer src="/assets/touch.js?v=20261014-wallet129"></script>
+  <script defer src="/assets/wallet.js?v=20261014-home-capsule132"></script>
+  <script defer src="/assets/mobile-pages.js?v=20261014-wallet129"></script>
+  <script defer src="/assets/news-paper.js?v=20261014-brand-paper114"></script>
+  <script defer="" src="/assets/app.js?v=20261014-home-capsule133">
   </script>
  </body>
 </html>

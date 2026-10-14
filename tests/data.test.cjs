@@ -39,5 +39,7 @@ const reply=(status,data)=>({status,ok:status===200,json:async()=>data});
     return reply(200,{candles:[]});
   });
   assert.equal(calls,2);
+  calls=0;const pendingLogo=async()=>{calls++;return reply(200,{url:'',pending:true})};
+  await readJSON('/api/logo?symbol=SZ000001',{},pendingLogo);await readJSON('/api/logo?symbol=SZ000001',{},pendingLogo);assert.equal(calls,2,'pending logos must not be held for 30 seconds in the read cache');
   console.log('Read requests: shared concurrent reads, isolated cached values, close cleanup, stale refresh, auth/write isolation, timeout/retry/abort recovery: PASS');
 })().catch(e=>{console.error(e);process.exitCode=1});

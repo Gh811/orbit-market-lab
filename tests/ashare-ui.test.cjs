@@ -9,6 +9,6 @@ console.log('Mixed markets: actual CNY prices, independent period selection and 
 
 assert.equal(c.money(100,{type:'swap',symbol:'SH600519'}),'¥100.00','legacy mistaken swap type is repaired only for a venue-prefixed mainland stock');
 assert.equal(c.money(100,{type:'swap',symbol:'ZHONGJI'}),'$100.00','OKX Chinese stock-linked perpetual remains dollar quoted');
-Object.assign(c,{assets:[{type:'ashare',symbol:'SH600519',groupId:'main'},{type:'ashare',symbol:'SZ002384',groupId:'main'},{type:'swap',symbol:'TRUMP',groupId:'main'}],groups:[{id:'main',name:'自选'}],activeGroupId:'main',selected:'ashare:SH600519',tf:'1d',deckDesktopTf:null,scheme:'redUp',swing:1,toggles:{},targets:{}});
+Object.assign(c,{assets:[{type:'ashare',symbol:'SH600519',groupId:'main'},{type:'ashare',symbol:'SZ002384',groupId:'main'},{type:'swap',symbol:'TRUMP',groupId:'main'}],groups:[{id:'main',name:'自选'}],activeGroupId:'main',selected:'ashare:SH600519',tf:'1d',deckDesktopTf:null,scheme:'redUp',swing:1,toggles:{},targets:{},walletHoldings:[]});
 vm.runInContext(app.slice(app.indexOf('function stateSnapshot(){'),app.indexOf('function pendingKey()')),c);
 assert.deepEqual(Array.from(c.stateSnapshot().assets,a=>a.type),['ashare','ashare','swap'],'account save and reload retain distinct market types');

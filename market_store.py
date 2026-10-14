@@ -5,6 +5,7 @@ import re
 import sqlite3
 import threading
 import time
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 
@@ -137,8 +138,12 @@ class MarketStore:
         return [json.loads(row[0]) for row in reversed(rows)]
 
     @staticmethod
+    def profile_complete(value):
+        return isinstance(value,dict) and not value.get('incomplete') and bool(str(value.get('summary') or '').strip()) and not re.search(r'正在补全|暂未收录|暂无简介|正在读取',str(value.get('summary') or ''))
+
+    @staticmethod
     def logo_mime(payload):
-        if not isinstance(payload, bytes) or not 50 <= len(payload) <= 262144:
+        if not isinstance(payload, bytes) or not 50 <= len(payload) <= 524288:
             return None
         if payload.startswith(b"\x89PNG\r\n\x1a\n"):
             return "image/png"
@@ -146,7 +151,39 @@ class MarketStore:
             return "image/jpeg"
         if payload.startswith(b"RIFF") and payload[8:12] == b"WEBP":
             return "image/webp"
+        if payload.startswith(b'\x00\x00\x01\x00') and len(payload)>=22:
+            count=int.from_bytes(payload[4:6],'little')
+            if not 1<=count<=64 or len(payload)<6+16*count:return None
+            for index in range(count):
+                entry=payload[6+16*index:22+16*index]
+                size=int.from_bytes(entry[8:12],'little');offset=int.from_bytes(entry[12:16],'little')
+                if size<1 or offset<6+16*count or offset+size>len(payload):return None
+            return 'image/x-icon'
+        # Static vectors are stored as original bytes; reject active/external SVG content.
+        if b'<svg' in payload[:512].lower():
+            if any(token in payload.lower() for token in (b'<!doctype',b'<!entity',b'@import',b'url(')):return None
+            allowed={'svg','g','defs','path','rect','circle','ellipse','line','polyline','polygon','text','tspan','title','desc','linearGradient','radialGradient','stop','clipPath','use','style'}
+            try:
+                root=ET.fromstring(payload)
+                if root.tag.split('}')[-1]!='svg':return None
+                nodes=list(root.iter())
+                if len(nodes)>4000:return None
+                for node in nodes:
+                    if node.tag.split('}')[-1] not in allowed:return None
+                    if node.tag.split('}')[-1]=='style' and not re.fullmatch(r'[A-Za-z0-9.#,\s{}:%;()/_+-]*',node.text or ''):return None
+                    for key,value in node.attrib.items():
+                        name=key.split('}')[-1].lower()
+                        if name.startswith('on') or name=='href' and not value.startswith('#') or '\\' in value:return None
+                        if any(token in value.lower() for token in ('javascript:','data:','http:','https:','url(')):return None
+                return 'image/svg+xml'
+            except (ET.ParseError,ValueError):return None
         return None
+
+    def logo_manifest(self, category=None):
+        """Read URL metadata without loading image blobs into catalogue responses."""
+        with self._db() as db:
+            rows=db.execute('SELECT symbol,source FROM logos WHERE category=?', (str(category),)).fetchall() if category is not None else db.execute('SELECT symbol,source FROM logos').fetchall()
+        return {symbol:{'url':'/api/logo-image?symbol='+symbol,'source':source} for symbol,source in rows}
 
     def save_logo(self, symbol, category, payload, source, *, remote_url="", saved_at=None,
                   overwrite=True):
@@ -281,6 +318,10 @@ class MarketStore:
                 return record[0], True
             try:
                 value = fetch()
+                # A temporary metadata gap cannot erase a previously complete public profile.
+                if isinstance(value,dict) and 'summary' in value and not self.profile_complete(value) and record and self.profile_complete(record[0]):
+                    self._retry_after[key]=time.time()+30
+                    return record[0],True
                 # Empty upstream responses must not erase useful cached candles.
                 if isinstance(value, list) and not value and record and record[0]:
                     self._retry_after[key] = time.time() + 30
@@ -331,7 +372,7 @@ class MarketStore:
             rows=db.execute('SELECT kind,symbol,followed FROM tracked_assets WHERE next_refresh<=? ORDER BY followed DESC,next_refresh ASC,seen_at DESC LIMIT ?',(time.time(),max(1,min(32,limit)))).fetchall()
         return [{'type':kind,'symbol':symbol,'_priority':bool(followed)} for kind,symbol,followed in rows]
 
-    def finish_asset_refresh(self, kind, symbol):
+    def finish_asset_refresh(self, kind, symbol, *, complete=True):
         with self._db() as db:
             exists=db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='tracked_assets'").fetchone()
-            if exists:db.execute('UPDATE tracked_assets SET next_refresh=? + CASE WHEN followed=1 THEN 900 ELSE 86400 END WHERE kind=? AND symbol=?',(time.time(),kind,symbol))
+            if exists:db.execute('UPDATE tracked_assets SET next_refresh=? + CASE WHEN ?=0 THEN 60 WHEN followed=1 THEN 900 ELSE 86400 END WHERE kind=? AND symbol=?',(time.time(),int(complete),kind,symbol))

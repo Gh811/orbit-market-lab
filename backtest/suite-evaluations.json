@@ -1,0 +1,530 @@
+[
+  {
+    "strategy": "compressionRide",
+    "qualified": false,
+    "results": [
+      {
+        "symbol": "BTC",
+        "testFrom": 1581544800000,
+        "to": 1791842400000,
+        "summary": {
+          "annualizedReturn": -0.0023260738386224125,
+          "averageYearlyReturn": -0.011072228209693048,
+          "completeYears": 5,
+          "eligibility": "fail",
+          "threshold": 0.1,
+          "years": 6.663928815879535,
+          "finalCapital": 9846.009503168974,
+          "return": -0.015399049683102572,
+          "maxDrawdown": 0.16790801668434424,
+          "trades": 86,
+          "winRate": 0.10465116279069768,
+          "profitFactor": 0.9618858292269082,
+          "fees": 194.19185546679904,
+          "buyHold": 7.0122059134717105
+        }
+      },
+      {
+        "symbol": "ETH",
+        "testFrom": 1581544800000,
+        "to": 1791820800000,
+        "summary": {
+          "annualizedReturn": 0.023052936094812775,
+          "averageYearlyReturn": 0.03919126406210194,
+          "completeYears": 5,
+          "eligibility": "fail",
+          "threshold": 0.1,
+          "years": 6.663244353182751,
+          "finalCapital": 11640.013918475777,
+          "return": 0.16400139184757778,
+          "maxDrawdown": 0.10361462760920678,
+          "trades": 85,
+          "winRate": 0.15294117647058825,
+          "profitFactor": 1.4083459844521804,
+          "fees": 166.31684463439726,
+          "buyHold": 8.237347877708519
+        }
+      }
+    ]
+  },
+  {
+    "strategy": "structureRide",
+    "qualified": false,
+    "results": [
+      {
+        "symbol": "BTC",
+        "testFrom": 1581544800000,
+        "to": 1791842400000,
+        "summary": {
+          "annualizedReturn": 0.017474516992314334,
+          "averageYearlyReturn": 0.01312395295075366,
+          "completeYears": 5,
+          "eligibility": "fail",
+          "threshold": 0.1,
+          "years": 6.663928815879535,
+          "finalCapital": 11223.707537276969,
+          "return": 0.12237075372769679,
+          "maxDrawdown": 0.1569923405224987,
+          "trades": 99,
+          "winRate": 0.1414141414141414,
+          "profitFactor": 1.2594852689122809,
+          "fees": 325.6722986864364,
+          "buyHold": 7.0122059134717105
+        }
+      },
+      {
+        "symbol": "ETH",
+        "testFrom": 1581544800000,
+        "to": 1791820800000,
+        "summary": {
+          "annualizedReturn": 0.008625839508986195,
+          "averageYearlyReturn": 0.022542055252476812,
+          "completeYears": 5,
+          "eligibility": "fail",
+          "threshold": 0.1,
+          "years": 6.663244353182751,
+          "finalCapital": 10588.989088948847,
+          "return": 0.058898908894884805,
+          "maxDrawdown": 0.13064348269568166,
+          "trades": 88,
+          "winRate": 0.14772727272727273,
+          "profitFactor": 1.1622761352384385,
+          "fees": 197.5938478740888,
+          "buyHold": 8.237347877708519
+        }
+      }
+    ]
+  },
+  {
+    "strategy": "macroRide",
+    "qualified": false,
+    "results": [
+      {
+        "symbol": "BTC",
+        "testFrom": 1581544800000,
+        "to": 1791842400000,
+        "summary": {
+          "annualizedReturn": 0.06109417383248531,
+          "averageYearlyReturn": 0.02684840511738702,
+          "completeYears": 5,
+          "eligibility": "fail",
+          "threshold": 0.1,
+          "years": 6.663928815879535,
+          "finalCapital": 14846.440972850338,
+          "return": 0.4846440972850339,
+          "maxDrawdown": 0.07452712415994803,
+          "trades": 142,
+          "winRate": 0.20422535211267606,
+          "profitFactor": 1.6779254893486095,
+          "fees": 313.5921261842411,
+          "buyHold": 7.0122059134717105
+        }
+      },
+      {
+        "symbol": "ETH",
+        "testFrom": 1581544800000,
+        "to": 1791820800000,
+        "summary": {
+          "annualizedReturn": 0.0348469251082423,
+          "averageYearlyReturn": 0.029524027900640615,
+          "completeYears": 5,
+          "eligibility": "fail",
+          "threshold": 0.1,
+          "years": 6.663244353182751,
+          "finalCapital": 12563.862641859661,
+          "return": 0.2563862641859662,
+          "maxDrawdown": 0.1333634033139664,
+          "trades": 148,
+          "winRate": 0.20270270270270271,
+          "profitFactor": 1.3713856880509585,
+          "fees": 235.11596266070663,
+          "buyHold": 8.237347877708519
+        }
+      }
+    ]
+  },
+  {
+    "strategy": "channelRide",
+    "qualified": false,
+    "results": [
+      {
+        "symbol": "BTC",
+        "testFrom": 1581544800000,
+        "to": 1791842400000,
+        "summary": {
+          "annualizedReturn": 0.037212045255481545,
+          "averageYearlyReturn": 0.027062464572450783,
+          "completeYears": 5,
+          "eligibility": "fail",
+          "threshold": 0.1,
+          "years": 6.663928815879535,
+          "finalCapital": 12756.755582195918,
+          "return": 0.2756755582195918,
+          "maxDrawdown": 0.042950748524238545,
+          "trades": 108,
+          "winRate": 0.39814814814814814,
+          "profitFactor": 1.8779835370734113,
+          "fees": 124.91727766624561,
+          "buyHold": 7.0122059134717105
+        }
+      },
+      {
+        "symbol": "ETH",
+        "testFrom": 1581544800000,
+        "to": 1791820800000,
+        "summary": {
+          "annualizedReturn": 0.023190177619534354,
+          "averageYearlyReturn": 0.016172964030840786,
+          "completeYears": 5,
+          "eligibility": "fail",
+          "threshold": 0.1,
+          "years": 6.663244353182751,
+          "finalCapital": 11650.42250224041,
+          "return": 0.16504225022404095,
+          "maxDrawdown": 0.05828350193748301,
+          "trades": 110,
+          "winRate": 0.33636363636363636,
+          "profitFactor": 1.5065869688991724,
+          "fees": 80.06580434715285,
+          "buyHold": 8.237347877708519
+        }
+      }
+    ]
+  },
+  {
+    "strategy": "momentumContinuation",
+    "qualified": false,
+    "results": [
+      {
+        "symbol": "BTC",
+        "testFrom": 1581544800000,
+        "to": 1791842400000,
+        "summary": {
+          "annualizedReturn": -0.0035428025389400456,
+          "averageYearlyReturn": -0.011331361218293656,
+          "completeYears": 5,
+          "eligibility": "fail",
+          "threshold": 0.1,
+          "years": 6.663928815879535,
+          "finalCapital": 9766.265867376494,
+          "return": -0.02337341326235054,
+          "maxDrawdown": 0.17211087826002097,
+          "trades": 186,
+          "winRate": 0.3010752688172043,
+          "profitFactor": 0.9595802850954551,
+          "fees": 316.87837185070265,
+          "buyHold": 7.0122059134717105
+        }
+      },
+      {
+        "symbol": "ETH",
+        "testFrom": 1581544800000,
+        "to": 1791820800000,
+        "summary": {
+          "annualizedReturn": -0.00974592113137321,
+          "averageYearlyReturn": -0.011319531895250723,
+          "completeYears": 5,
+          "eligibility": "fail",
+          "threshold": 0.1,
+          "years": 6.663244353182751,
+          "finalCapital": 9368.257568840381,
+          "return": -0.06317424311596187,
+          "maxDrawdown": 0.14437039613544309,
+          "trades": 187,
+          "winRate": 0.23529411764705882,
+          "profitFactor": 0.8952744374019964,
+          "fees": 227.02917102776033,
+          "buyHold": 8.237347877708519
+        }
+      }
+    ]
+  },
+  {
+    "strategy": "rangeRecovery",
+    "qualified": false,
+    "results": [
+      {
+        "symbol": "BTC",
+        "testFrom": 1581544800000,
+        "to": 1791842400000,
+        "summary": {
+          "annualizedReturn": 0.0008171067369076757,
+          "averageYearlyReturn": -0.004977248691243452,
+          "completeYears": 5,
+          "eligibility": "fail",
+          "threshold": 0.1,
+          "years": 6.663928815879535,
+          "finalCapital": 10054.577572980113,
+          "return": 0.005457757298011456,
+          "maxDrawdown": 0.03360113200100263,
+          "trades": 19,
+          "winRate": 0.3684210526315789,
+          "profitFactor": 1.090798997323519,
+          "fees": 60.21028276652802,
+          "buyHold": 7.0122059134717105
+        }
+      },
+      {
+        "symbol": "ETH",
+        "testFrom": 1581544800000,
+        "to": 1791820800000,
+        "summary": {
+          "annualizedReturn": -0.007424042589690929,
+          "averageYearlyReturn": -0.00325739176480917,
+          "completeYears": 5,
+          "eligibility": "fail",
+          "threshold": 0.1,
+          "years": 6.663244353182751,
+          "finalCapital": 9515.597954771722,
+          "return": -0.04844020452282782,
+          "maxDrawdown": 0.06283646566262747,
+          "trades": 26,
+          "winRate": 0.23076923076923078,
+          "profitFactor": 0.4991487186597458,
+          "fees": 60.55377204969818,
+          "buyHold": 8.237347877708519
+        }
+      }
+    ]
+  },
+  {
+    "strategy": "trendBreakout",
+    "qualified": false,
+    "results": [
+      {
+        "symbol": "BTC",
+        "testFrom": 1581544800000,
+        "to": 1791842400000,
+        "summary": {
+          "annualizedReturn": 0.03313945076337444,
+          "averageYearlyReturn": 0.02930787011303817,
+          "completeYears": 5,
+          "eligibility": "fail",
+          "threshold": 0.1,
+          "years": 6.663928815879535,
+          "finalCapital": 12426.653968064891,
+          "return": 0.24266539680648913,
+          "maxDrawdown": 0.04074868404589012,
+          "trades": 151,
+          "winRate": 0.40397350993377484,
+          "profitFactor": 1.5468775856517172,
+          "fees": 223.75911794300595,
+          "buyHold": 7.0122059134717105
+        }
+      },
+      {
+        "symbol": "ETH",
+        "testFrom": 1581544800000,
+        "to": 1791820800000,
+        "summary": {
+          "annualizedReturn": 0.01868010748920038,
+          "averageYearlyReturn": 0.020904959130264623,
+          "completeYears": 5,
+          "eligibility": "fail",
+          "threshold": 0.1,
+          "years": 6.663244353182751,
+          "finalCapital": 11312.484445836071,
+          "return": 0.13124844458360707,
+          "maxDrawdown": 0.05420767478493147,
+          "trades": 137,
+          "winRate": 0.36496350364963503,
+          "profitFactor": 1.338080028354082,
+          "fees": 138.94466963369712,
+          "buyHold": 8.237347877708519
+        }
+      }
+    ]
+  },
+  {
+    "strategy": "trendPullback",
+    "qualified": false,
+    "results": [
+      {
+        "symbol": "BTC",
+        "testFrom": 1581544800000,
+        "to": 1791842400000,
+        "summary": {
+          "annualizedReturn": -0.0052625538449716834,
+          "averageYearlyReturn": 0.003156306592091429,
+          "completeYears": 5,
+          "eligibility": "fail",
+          "threshold": 0.1,
+          "years": 6.663928815879535,
+          "finalCapital": 9654.491106836362,
+          "return": -0.03455088931636385,
+          "maxDrawdown": 0.07860422647792815,
+          "trades": 211,
+          "winRate": 0.36018957345971564,
+          "profitFactor": 0.944540139630267,
+          "fees": 307.0317331088782,
+          "buyHold": 7.0122059134717105
+        }
+      },
+      {
+        "symbol": "ETH",
+        "testFrom": 1581544800000,
+        "to": 1791820800000,
+        "summary": {
+          "annualizedReturn": -0.01200260827981982,
+          "averageYearlyReturn": -0.017141673328612696,
+          "completeYears": 5,
+          "eligibility": "fail",
+          "threshold": 0.1,
+          "years": 6.663244353182751,
+          "finalCapital": 9226.916726172187,
+          "return": -0.07730832738278137,
+          "maxDrawdown": 0.14421769686679797,
+          "trades": 221,
+          "winRate": 0.35294117647058826,
+          "profitFactor": 0.8805780591025086,
+          "fees": 235.1908389831184,
+          "buyHold": 8.237347877708519
+        }
+      }
+    ]
+  },
+  {
+    "strategy": "wickSweep",
+    "qualified": false,
+    "results": [
+      {
+        "symbol": "BTC",
+        "testFrom": 1581544800000,
+        "to": 1791842400000,
+        "summary": {
+          "annualizedReturn": -0.0009285540497745796,
+          "averageYearlyReturn": 0.00033112975859428406,
+          "completeYears": 5,
+          "eligibility": "fail",
+          "threshold": 0.1,
+          "years": 6.663928815879535,
+          "finalCapital": 9938.284301258393,
+          "return": -0.006171569874160787,
+          "maxDrawdown": 0.0656684287311471,
+          "trades": 92,
+          "winRate": 0.2717391304347826,
+          "profitFactor": 0.9809874013200629,
+          "fees": 222.012423862807,
+          "buyHold": 7.0122059134717105
+        }
+      },
+      {
+        "symbol": "ETH",
+        "testFrom": 1581544800000,
+        "to": 1791820800000,
+        "summary": {
+          "annualizedReturn": 0.011088581530306486,
+          "averageYearlyReturn": 0.01553348580631928,
+          "completeYears": 5,
+          "eligibility": "fail",
+          "threshold": 0.1,
+          "years": 6.663244353182751,
+          "finalCapital": 10762.46243602709,
+          "return": 0.07624624360270893,
+          "maxDrawdown": 0.03568605541447292,
+          "trades": 72,
+          "winRate": 0.3472222222222222,
+          "profitFactor": 1.3257637334947272,
+          "fees": 135.6249599331196,
+          "buyHold": 8.237347877708519
+        }
+      }
+    ]
+  },
+  {
+    "strategy": "pinConfirm",
+    "qualified": false,
+    "results": [
+      {
+        "symbol": "BTC",
+        "testFrom": 1581544800000,
+        "to": 1791842400000,
+        "summary": {
+          "annualizedReturn": -0.0007967628962343342,
+          "averageYearlyReturn": 0.0004948739580224349,
+          "completeYears": 5,
+          "eligibility": "fail",
+          "threshold": 0.1,
+          "years": 6.663928815879535,
+          "finalCapital": 9947.023944857276,
+          "return": -0.0052976055142723855,
+          "maxDrawdown": 0.11539535523107158,
+          "trades": 242,
+          "winRate": 0.23140495867768596,
+          "profitFactor": 0.9942309536704839,
+          "fees": 512.8526758375168,
+          "buyHold": 7.0122059134717105
+        }
+      },
+      {
+        "symbol": "ETH",
+        "testFrom": 1581544800000,
+        "to": 1791820800000,
+        "summary": {
+          "annualizedReturn": 0.007772490772700097,
+          "averageYearlyReturn": 0.0024404972237968003,
+          "completeYears": 5,
+          "eligibility": "fail",
+          "threshold": 0.1,
+          "years": 6.663244353182751,
+          "finalCapital": 10529.437084348343,
+          "return": 0.05294370843483431,
+          "maxDrawdown": 0.127730279923358,
+          "trades": 238,
+          "winRate": 0.24789915966386555,
+          "profitFactor": 1.0592008730279379,
+          "fees": 405.84868313430945,
+          "buyHold": 8.237347877708519
+        }
+      }
+    ]
+  },
+  {
+    "strategy": "engulfRide",
+    "qualified": false,
+    "results": [
+      {
+        "symbol": "BTC",
+        "testFrom": 1581544800000,
+        "to": 1791842400000,
+        "summary": {
+          "annualizedReturn": -0.018259226313401492,
+          "averageYearlyReturn": -0.024925691812471173,
+          "completeYears": 5,
+          "eligibility": "fail",
+          "threshold": 0.1,
+          "years": 6.663928815879535,
+          "finalCapital": 8844.38083486581,
+          "return": -0.11556191651341907,
+          "maxDrawdown": 0.17708893364989645,
+          "trades": 130,
+          "winRate": 0.23846153846153847,
+          "profitFactor": 0.7287326349492016,
+          "fees": 255.83492943203592,
+          "buyHold": 7.0122059134717105
+        }
+      },
+      {
+        "symbol": "ETH",
+        "testFrom": 1581544800000,
+        "to": 1791820800000,
+        "summary": {
+          "annualizedReturn": 0.0597331749559132,
+          "averageYearlyReturn": 0.03355637077989608,
+          "completeYears": 5,
+          "eligibility": "fail",
+          "threshold": 0.1,
+          "years": 6.663244353182751,
+          "finalCapital": 14719.41795497626,
+          "return": 0.47194179549762594,
+          "maxDrawdown": 0.07216089037777892,
+          "trades": 125,
+          "winRate": 0.256,
+          "profitFactor": 1.9424862962347447,
+          "fees": 259.99521001613624,
+          "buyHold": 8.237347877708519
+        }
+      }
+    ]
+  }
+]

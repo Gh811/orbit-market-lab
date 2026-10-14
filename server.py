@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Local-only OKX perpetual dashboard; an optional news token stays in memory."""
 import getpass
+import hashlib
 import hmac
 import html
 from email.utils import parsedate_to_datetime
@@ -27,12 +28,13 @@ from zoneinfo import ZoneInfo
 from backtest import jobs as research_jobs
 
 import okx_market
+from release_tools import version_html, release_identity
 import ashare_market
 from asset_brand import company_icon
 from market_store import MarketStore
 
 ROOT = Path(__file__).resolve().parent
-LOGO_CACHE_DIR = ROOT / ".asset_logo_cache"
+LOGO_CACHE_DIR = Path(os.environ.get("MARKET_LOGO_CACHE_DIR",str(ROOT / ".asset_logo_cache")))
 ACCOUNT_DB = Path(os.environ.get("MARKET_ACCOUNT_DB", str(ROOT / ".market_accounts.sqlite3")))
 MARKET_DB = Path(os.environ.get("MARKET_DATA_DB", str(ROOT / ".market_data.sqlite3")))
 MARKET_STORE = None
@@ -84,7 +86,10 @@ BRAND_LOGOS = {"ZHONGJI": ("/assets/icons/brand/zhongji.png", "中际旭创官�
                "XAU": ("/assets/icons/brand/gold.svg", "黄金商品示意图 · 非品牌 Logo")}
 CURATED_COIN_LOGOS = {"DOGE": ("/assets/icons/crypto/doge.png", "Dogecoin 官网")}
 # A股没有 OKX 图标链路，这里只放人工核对过的公司官网标识；新增前必须先核验图片确为该公司标识。
-ASHARE_BRAND_LOGOS = {"SH600519": ("/assets/icons/brand/sh600519.png", "贵州茅台官网 · 公司标识"),
+ASHARE_BRAND_LOGOS = {"SZ301308": ("/assets/icons/brand/sz301308.png", "江波龙官网 · 公司标识"),
+                     "SZ000651": ("/assets/icons/brand/sz000651.png", "格力电器官网 · 公司标识"),
+                     "SH600362": ("/assets/icons/brand/sh600362.png", "江西铜业官网 · 公司标识"),
+                     "SH600519": ("/assets/icons/brand/sh600519.png", "贵州茅台官网 · 公司标识"),
                       "SZ002384": ("/assets/icons/brand/sz002384.png", "东山精密官网 · 公司标识")}
 SUMMARIES = {
     ("stock", "CXMT"): ("长鑫存储专注于 DRAM 存储芯片的设计、研发、生产和销售，产品应用于移动终端、电脑、服务器等领域。", "长鑫存储官网", "https://www.cxmt.com/"),
@@ -150,7 +155,7 @@ SUMMARIES = {
     ("crypto", "GLM"): ("Golem 是一个开源的去中心化算力市场，把计算任务拆分后交由网络中设备的闲置算力（含 GPU）完成，用户以 GLM 代币换取算力，服务于 AI 等计算需求。", "Golem 官网", "https://golem.network/"),
     ("crypto", "NEAR"): ("NEAR Protocol 是主打高性能与 AI 原生的 Layer 1 区块链，采用分片扩容、可读账户名与链抽象设计；NEAR 是其原生代币，用于支付手续费、质押与治理。", "NEAR 官网", "https://near.org/"),
     ("crypto", "AI"): ("Artificial Inu（AI）是在 Robinhood Chain 上发行的 ERC-20 社区代币，主要通过与代币化的 NVDA 股票代币组成链上流动性池进行交易；交易手续费按币种分别进入社区金库或用于销毁与锁仓。", "CoinGecko 项目资料", "https://artificialinu.com"),
-    ("crypto", "TRUMP"): ("TRUMP（特朗普币或川普币）是与唐纳德·特朗普相关的 Meme 代币，2025 年在 Solana 网络发行，官方定位为表达支持的数字收藏品。", "Official Trump 官网", "https://www.gettrumpmemes.com/"),
+    ("crypto", "TRUMP"): ("TRUMP（川普币）是围绕特朗普形象建立的 Meme 代币，最初发行于 Solana 网络。官网设有持币社区与活动榜单，最大供应量为 10 亿枚，按三年计划释放。", "Official Trump 官网", "https://www.gettrumpmemes.com/"),
 }
 
 
@@ -755,13 +760,15 @@ def cached(key, seconds, fn):
     now = time.monotonic()
     with CACHE_LOCK:
         old = CACHE.get(key)
-        if old and now - old[0] < seconds:
+        ttl = min(seconds,30) if key[0] in ("coin","company") and old and (not old[1] or old[1].get("ambiguous")) else seconds
+        if old and now - old[0] < ttl:
             return old[1]
         key_lock = CACHE_KEY_LOCKS.setdefault(key, threading.Lock())
     with key_lock:
         with CACHE_LOCK:
             old = CACHE.get(key)
-            if old and time.monotonic() - old[0] < seconds:
+            ttl = min(seconds,30) if key[0] in ("coin","company") and old and (not old[1] or old[1].get("ambiguous")) else seconds
+            if old and time.monotonic() - old[0] < ttl:
                 return old[1]
         value = fn()
         with CACHE_LOCK:
@@ -895,7 +902,9 @@ def refresh_active_market_data():
         time.sleep(15)
         try:
             market_store().refresh_hot()
-            ASSET_DATA_PIPELINE.submit(market_store().due_assets())
+            due=market_store().due_assets()
+            ASSET_BRAND_PIPELINE.submit(due)
+            ASSET_DATA_PIPELINE.submit(due)
         except (OSError, ValueError):
             pass
 
@@ -918,6 +927,7 @@ def official_trump_info(kind="swap"):
             "category":"crypto","pair":"TRUMP-USDT-SWAP" if kind=="swap" else "TRUMP-USD",
             "base":"TRUMP","quote":"USDT" if kind=="swap" else "USD","exchange":"OKX" if kind=="swap" else "—",
             "status":"—","tickSize":"—","contractValue":"—",
+            "network":"Solana / TRON","maxSupply":"10 亿枚","summaryVersion":3,
             "summary":SUMMARIES[("crypto", "TRUMP")][0],
             "website":"https://gettrumpmemes.com/","summaryUrl":"https://gettrumpmemes.com/",
             "summarySource":"Official Trump 官网","source":"Official Trump 官网 · 项目资料"}
@@ -957,6 +967,8 @@ def asset_info(kind, symbol):
             company_site = STOCK_WEBSITES.get(symbol, "")
             if company_site:
                 market_store().save_website("stock", symbol, company_site, "核实官网")
+        if asset_kind == "stock" and not company_site and summary and urlsplit(summary[2]).scheme=="https":
+            company_site=summary[2]
         if asset_kind == "stock" and not company_site:
             try:
                 identified = cached(("company", symbol), 86400,
@@ -1079,8 +1091,8 @@ def asset_profile(kind, symbol):
             previous = None
     incomplete = previous and (previous[0].get("incomplete") or
         re.search(r"正在补全|暂未收录|暂无简介", str(previous[0].get("summary") or "")))
-    return stored_market_data(("info", kind, symbol), 30 if incomplete else 3600,
-                              lambda: verified_asset_info(kind, symbol), hot=True)
+    return stored_market_data(("info", kind, symbol), 30 if incomplete else 30*86400,
+                              lambda: verified_asset_info(kind, symbol), hot=True, background=True)
 
 
 def verified_ashare_profile(symbol):
@@ -1088,33 +1100,92 @@ def verified_ashare_profile(symbol):
     if row.get("type")!="ashare" or row.get("symbol")!=symbol or row.get("pair")!=symbol or row.get("quote")!="CNY":
         raise ValueError("股票资料身份不匹配")
     if row.get("incomplete"):
-        old=market_store().read(MarketStore.key("ashare","info-v3",symbol))
-        if old and old[0].get("type")=="ashare" and old[0].get("symbol")==symbol and old[0].get("summary"):
-            row={**row,**{key:old[0][key] for key in ("summary","source","website") if old[0].get(key)}}
+        old=market_store().read(MarketStore.key("ashare","info-v4",symbol))
+        if old and old[0].get("type")=="ashare" and old[0].get("symbol")==symbol and not old[0].get("incomplete") and old[0].get("summary"):
+            raise ValueError("保留已经核实的公司资料，稍后重试来源")
+    row["updatedAt"]=int(time.time()*1000)
+    if not row.get("incomplete"):
+        market_store().save_summary("ashare",symbol,row["summary"],row.get("source",""),row.get("website",""))
+        if row.get("website"):market_store().save_website("ashare",symbol,row["website"],row.get("source",""),overwrite=True)
     return row
 
 
 def ashare_profile(symbol):
-    previous=market_store().read(MarketStore.key("ashare","info-v3",symbol))
-    ttl=300 if previous and previous[0].get("incomplete") else 86400
-    return stored_market_data(("ashare","info-v3",symbol),ttl,lambda:verified_ashare_profile(symbol))
+    previous=market_store().read(MarketStore.key("ashare","info-v4",symbol))
+    curated=ashare_market.CURATED_COMPANIES.get(symbol)
+    if curated and previous and previous[0].get("summary")!=curated["summary"]:
+        row=verified_ashare_profile(symbol)
+        market_store().write(MarketStore.key("ashare","info-v4",symbol),row)
+        return row,False
+    ttl=30 if previous and not market_store().profile_complete(previous[0]) else 30*86400
+    return stored_market_data(("ashare","info-v4",symbol),ttl,lambda:verified_ashare_profile(symbol),background=True)
 
 
-def warm_asset_data(symbol):
-    if ashare_market.is_symbol(symbol):
+def warm_asset_brand(symbol):
+    if not ashare_market.is_symbol(symbol):
+        # Branding has its own workers: quote/history latency cannot block discovery.
+        try:
+            catalog=cached(("okx","instruments"),600,okx_market.instruments)
+            if symbol not in catalog:return
+            logo=resolve_logo(symbol,catalog)
+            url=logo.get("url","")
+            local=ROOT/url.lstrip("/") if url.startswith("/assets/") else None
+            if local and local.is_file():
+                market_store().save_logo(symbol,str(catalog[symbol].get("instCategory","")),local.read_bytes(),logo.get("source",""))
+            asset_profile("swap",symbol)
+        except (OSError,ValueError):pass
+        return
+    # Single-flight independent from slow quotes/history; repeated searches share the work.
+    def fetch():
         try:
             info,_=ashare_profile(symbol)
             if info.get("type")!="ashare" or info.get("symbol")!=symbol:raise ValueError("股票资料身份不匹配")
             if not info.get("incomplete") and info.get("summary"):
                 market_store().save_summary("ashare",symbol,info["summary"],info.get("source",""),info.get("website",""))
             if info.get("website"):market_store().save_website("ashare",symbol,info["website"],info.get("source",""),overwrite=True)
-            resolve_ashare_logo(symbol,info)
-        except (OSError,ValueError):pass
+            return resolve_ashare_logo(symbol,info)
+        except (OSError,ValueError):return None
+    return cached(("ashare","brand-refresh",str(market_store().path),symbol),30,fetch)
+
+
+def ashare_logo_status(symbol):
+    # A cached image always wins over any earlier negative lookup or refresh cooldown.
+    entry=ASHARE_BRAND_LOGOS.get(symbol)
+    if entry:return {"url":entry[0],"source":entry[1]}
+    existing=market_store().logo(symbol,"ashare")
+    if existing:return {"url":f"/api/logo-image?symbol={symbol}","source":existing["source"]}
+    ASSET_BRAND_PIPELINE.submit([{"type":"ashare","symbol":symbol}],priority=True)
+    return {"url":"","source":"公司图标正在获取","pending":True,"retryAfter":2}
+
+
+def swap_logo_status(symbol,catalog):
+    category=str(catalog[symbol].get("instCategory",""))
+    for entry in (CURATED_COIN_LOGOS.get(symbol),BRAND_LOGOS.get(symbol)):
+        if entry and (ROOT/entry[0].lstrip("/")).is_file():
+            return {"url":entry[0],"source":entry[1]}
+    official=ROOT/"assets"/"icons"/"okx"/f"{symbol.lower()}.png"
+    if official.is_file():return {"url":f"/assets/icons/okx/{symbol.lower()}.png","source":"OKX 页面"}
+    existing=saved_logo(symbol,category)
+    if existing:return existing
+    ASSET_BRAND_PIPELINE.submit([{"type":"swap","symbol":symbol}],priority=True)
+    return {"url":"","source":"标的图标正在获取","pending":True,"retryAfter":2}
+
+
+def attach_cached_logos(items):
+    manifest=market_store().logo_manifest()
+    return [{**item,"logo":manifest[item["symbol"]]["url"],"logoSource":manifest[item["symbol"]]["source"]} if item["symbol"] in manifest else item for item in items]
+
+
+def warm_asset_data(symbol):
+    if ashare_market.is_symbol(symbol):
+        warm_asset_brand(symbol)
         try: stored_market_data(("ashare","quote",symbol),15,lambda:ashare_market.quote(symbol))
         except (OSError,ValueError):pass
         try: stored_market_data(("ashare", "candles", symbol, "1d"), 30, lambda: ashare_market.candles(symbol, "1d"), symbol=symbol, tf="1d")
         except (OSError, ValueError): pass
-        market_store().finish_asset_refresh("ashare", symbol)
+        saved=market_store().read(MarketStore.key("ashare","info-v4",symbol))
+        complete=bool(saved and not saved[0].get("incomplete") and saved[0].get("summary"))
+        market_store().finish_asset_refresh("ashare", symbol,complete=complete)
         return
     # Persist each successful component independently, even when the other fails.
     try:
@@ -1142,6 +1213,7 @@ def warm_asset_data(symbol):
 def register_discovered(items, followed=False):
     market_store().save_asset_catalog(items)
     market_store().track_assets(items, followed=followed)
+    ASSET_BRAND_PIPELINE.submit(items,priority=followed)
     if followed: ASSET_DATA_PIPELINE.submit(items, priority=True)
     else: ASSET_DATA_PIPELINE.submit(items)
 
@@ -1152,7 +1224,7 @@ def combined_catalog():
     market_store().save_instruments(contracts)
     items=okx_market.search_catalog(contracts)+list(ashare_market.catalog().values())
     market_store().save_asset_catalog(items)
-    return items
+    return attach_cached_logos(items)
 
 
 def combined_search(query):
@@ -1164,9 +1236,10 @@ def combined_search(query):
         values=[str(row.get(k,"")) for k in ("symbol","code","name")]+row.get("aliases",[])
         q=query.casefold();values=[v.casefold() for v in values]
         return 0 if q in values else 1 if any(v.startswith(q) for v in values) else 2
-    return sorted(rows,key=lambda r:(rank(r),r["symbol"]))[:14]
+    return attach_cached_logos(sorted(rows,key=lambda r:(rank(r),r["symbol"]))[:14])
 
 
+ASSET_BRAND_PIPELINE = AssetDataPipeline(warm_asset_brand,workers=2,capacity=64)
 ASSET_DATA_PIPELINE = AssetDataPipeline(warm_asset_data)
 
 
@@ -1404,18 +1477,27 @@ class Handler(BaseHTTPRequestHandler):
 
     def respond(self, code, body, mime="application/json; charset=utf-8", cookie=None, cache_seconds=0):
         data = body if isinstance(body, bytes) else json.dumps(body, ensure_ascii=False).encode()
+        etag=None
+        if code==200 and cache_seconds and isinstance(body,bytes) and not cookie:
+            etag='"'+hashlib.blake2b(data,digest_size=16).hexdigest()+'"'
+            matches={value.strip().removeprefix('W/') for value in self.headers.get('If-None-Match','').split(',')}
+            if etag in matches or '*' in matches:code=304
         self.send_response(code)
         self.send_header("Content-Type", mime)
-        self.send_header("Content-Length", str(len(data)))
-        self.send_header("Cache-Control", f"private, max-age={cache_seconds}" if cache_seconds else "no-store")
+        if code!=304:self.send_header("Content-Length", str(len(data)))
+        if etag:self.send_header("ETag",etag)
+        requested_revision = parse_qs(urlsplit(self.path).query).get("v", [""])[0]
+        exact_revision = hashlib.sha256(data).hexdigest()[:16] if cache_seconds else ""
+        cache_policy = (f"private, max-age={cache_seconds}, immutable" if requested_revision == exact_revision else "private, no-cache") if cache_seconds else "no-store"
+        self.send_header("Cache-Control", cache_policy)
         self.send_header("X-Content-Type-Options", "nosniff")
-        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("X-Frame-Options", "SAMEORIGIN" if urlsplit(self.path).path in ("/backtest/", "/backtest/index.html") else "DENY")
         self.send_header("Referrer-Policy", "no-referrer")
-        self.send_header("Content-Security-Policy", "default-src 'self'; connect-src 'self' wss://ws.okx.com:8443 wss://ws.okx.com; style-src 'self'; script-src 'self'; img-src 'self' data: https://*.finnhub.io https://coin-images.coingecko.com https://assets.coingecko.com https://cdn.tickerlogos.com https://img.loadlogo.com; base-uri 'none'; form-action 'self'")
+        self.send_header("Content-Security-Policy", "default-src 'self'; connect-src 'self' wss://ws.okx.com:8443 wss://ws.okx.com; style-src 'self'; script-src 'self'; img-src 'self' data: blob: https://*.finnhub.io https://coin-images.coingecko.com https://assets.coingecko.com https://cdn.tickerlogos.com https://img.loadlogo.com; base-uri 'none'; form-action 'self'")
         if cookie:
             self.send_header("Set-Cookie", cookie)
         self.end_headers()
-        self.wfile.write(data)
+        if code!=304:self.wfile.write(data)
 
     def session_token(self):
         jar = SimpleCookie()
@@ -1440,7 +1522,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.respond(415, {"error": "请发送 JSON 数据"})
         try:
             length = int(self.headers.get("Content-Length", "0"))
-            if length < 0 or length > 32768:
+            if length < 0 or length > (131072 if path == "/api/user/state" else 32768):
                 return self.respond(413, {"error": "请求内容过大"})
             body = json.loads(self.rfile.read(length))
             if not isinstance(body, dict):
@@ -1558,13 +1640,11 @@ class Handler(BaseHTTPRequestHandler):
         research_files = {"/backtest/": ("index.html", "text/html"), "/backtest/index.html": ("index.html", "text/html"), "/backtest/app.js": ("app.js", "text/javascript"), "/backtest/style.css": ("style.css", "text/css")}
         if path.path in research_files:
             name, mime = research_files[path.path]
-            return self.respond(200, (ROOT / "backtest" / name).read_bytes(), mime + "; charset=utf-8")
-        if path.path in ("/", "/index.html", "/news.html", "/assets/styles.css", "/assets/theme.js", "/assets/insight.js", "/assets/strategy.js", "/assets/gesture.js", "/assets/audit.js", "/assets/app.js", "/assets/news.js", "/assets/touch.js", "/assets/rover-3d.js"):
+            return self.respond(200, version_html((ROOT / "backtest" / name).read_bytes(), ROOT, "/backtest/") if mime == "text/html" else (ROOT / "backtest" / name).read_bytes(), mime + "; charset=utf-8")
+        if path.path in ("/", "/index.html", "/news.html", "/assets/styles.css", "/assets/theme.js", "/assets/insight.js", "/assets/strategy.js", "/assets/gesture.js", "/assets/audit.js", "/assets/app.js", "/assets/news.js", "/assets/touch.js"):
             name = "index.html" if path.path == "/" else path.path.lstrip("/")
             mime = {"html": "text/html", "css": "text/css", "js": "text/javascript"}[name.rsplit(".", 1)[-1]] + "; charset=utf-8"
-            return self.respond(200, (ROOT / name).read_bytes(), mime)
-        if path.path == "/assets/models/rover-v1.glb":
-            return self.respond(200, (ROOT / "assets/models/rover-v1.glb").read_bytes(), "model/gltf-binary", cache_seconds=86400)
+            return self.respond(200, version_html((ROOT / name).read_bytes(), ROOT, path.path) if name.endswith(".html") else (ROOT / name).read_bytes(), mime, cache_seconds=(31536000 if "v" in parse_qs(path.query) else 3600) if name.startswith("assets/") else 0)
         if path.path in {
             "/assets/pets/space-rabbit-3d-v2.png", "/assets/pets/space-robot-3d-v2.png",
             "/assets/pets/space-saturn-3d-v2.png", "/assets/pets/space-ghost-3d-v2.png",
@@ -1578,11 +1658,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self.respond(200, asset.read_bytes(), "image/png", cache_seconds=86400)
         if path.path == "/assets/pets/mascots-3d-v1.png":
             return self.respond(200, (ROOT / "assets/pets/mascots-3d-v1.png").read_bytes(), "image/png", cache_seconds=86400)
-        if path.path in ("/assets/data.js", "/assets/mobile-pages.js", "/assets/mobile-pages.css", "/assets/pets/personal-navigator-v1.png"):
+        if path.path in ("/assets/data.js", "/assets/news-paper.js", "/assets/news-paper.css", "/assets/mobile-pages.js", "/assets/mobile-pages.css", "/assets/wallet.js", "/assets/wallet.css", "/assets/pets/personal-navigator-v1.png"):
             asset = ROOT / path.path.lstrip("/")
             if asset.is_file():
                 mime = {".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".png": "image/png"}[asset.suffix]
-                return self.respond(200, asset.read_bytes(), mime)
+                return self.respond(200, asset.read_bytes(), mime, cache_seconds=31536000 if "v" in parse_qs(path.query) else 3600)
         if path.path == "/assets/icon.svg":
             return self.respond(200, (ROOT / "assets/icon.svg").read_bytes(), "image/svg+xml", cache_seconds=86400)
         if path.path in ("/assets/icon.png", "/favicon.ico"):
@@ -1603,7 +1683,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.respond(200, icon.read_bytes(), "image/svg+xml" if icon.suffix == ".svg" else "image/png", cache_seconds=86400)
         if path.path == "/api/status":
             return self.respond(200, {"marketReady": True, "market": "OKX", "newsReady": True,
-                                      "serverTime": int(time.time() * 1000)})
+                                      "release": release_identity(ROOT), "serverTime": int(time.time() * 1000)})
         if path.path == "/api/auth/session":
             user = accounts().session(self.session_token())
             return self.respond(200, {"username": user["username"], "state": user["state"],
@@ -1649,7 +1729,7 @@ class Handler(BaseHTTPRequestHandler):
                 if symbol not in ashare_market.catalog():
                     return self.respond(404, {"error": "A股目录尚无此股票"})
                 try:
-                    result = cached(("logo", symbol), 300, lambda: resolve_ashare_logo(symbol))
+                    result = ashare_logo_status(symbol)
                 except (OSError, ValueError):
                     result = {"url": "", "source": "图标来源暂不可用"}
                 return self.respond(200, result)
@@ -1657,7 +1737,7 @@ class Handler(BaseHTTPRequestHandler):
             if symbol not in catalog:
                 return self.respond(404, {"error": "OKX 没有此合约"})
             try:
-                result = cached(("logo", symbol), 300, lambda: resolve_logo(symbol, catalog))
+                result = swap_logo_status(symbol, catalog)
             except (HTTPError, URLError, TimeoutError, ValueError):
                 result = {"url": "", "source": "图标来源暂不可用"}
             return self.respond(200, result)
@@ -1665,6 +1745,9 @@ class Handler(BaseHTTPRequestHandler):
             symbol = parse_qs(path.query).get("symbol", [""])[0].upper()
             if not re.fullmatch(r"[A-Z0-9]{1,15}", symbol):
                 return self.respond(400, {"error": "标的代码无效"})
+            record = market_store().logo(symbol)
+            if record:
+                return self.respond(200, record["image"], record["mime"], cache_seconds=86400)
             if ashare_market.is_symbol(symbol):
                 if symbol not in ashare_market.catalog():
                     return self.respond(404, {"error": "A股目录尚无此股票"})
@@ -1687,7 +1770,20 @@ class Handler(BaseHTTPRequestHandler):
                 return self.respond(400, {"error": "自选代码无效"})
             try:
                 contracts=[x for x in symbols if not ashare_market.is_symbol(x)]
-                rows = cached(("okx", "tickers", tuple(sorted(contracts))), 3, lambda: okx_market.quotes(contracts)) if contracts else {}
+                rows = {}
+                if contracts:
+                    try:
+                        batch, stale = stored_market_data(("okx", "tickers", tuple(sorted(contracts))), 3,
+                                                         lambda: okx_market.quotes(contracts), background=True)
+                        rows = {key: {**value, "stale": stale} for key, value in batch.items()}
+                        if not stale:
+                            for key, value in batch.items():
+                                market_store().write(MarketStore.key("okx", "quote", key), value)
+                    except (HTTPError, URLError, TimeoutError, ValueError):
+                        for key in contracts:
+                            saved = market_store().read(MarketStore.key("okx", "quote", key))
+                            if saved:
+                                rows[key] = {**saved[0], "stale": True}
                 for stock in (x for x in symbols if ashare_market.is_symbol(x)):
                     try: rows={**rows,stock:cached(("ashare","quote",stock),15,lambda stock=stock:ashare_market.quote(stock))}
                     except (OSError, ValueError): pass
@@ -1729,9 +1825,12 @@ class Handler(BaseHTTPRequestHandler):
             except (OSError, ValueError) as exc:return self.respond(502,{"error":str(exc)[:180]})
         if not re.fullmatch(r"[A-Z0-9]{1,15}", symbol) or kind != "swap":
             return self.respond(400, {"error": "请使用 OKX USDT 永续合约代码"})
-        if path.path == "/api/info" and symbol == "TRUMP":
-            info,stale=asset_profile(kind,symbol)
-            return self.respond(200, {**public_asset_info(info), "stale": stale})
+        if path.path == "/api/info":
+            try:
+                info,stale=asset_profile(kind,symbol)
+                return self.respond(200, {**public_asset_info(info), "stale": stale})
+            except (HTTPError,URLError,TimeoutError,OSError,ValueError):
+                return self.respond(502,{"error":"标的资料暂不可用"})
         try:
             if kind == "swap":
                 catalog = cached(("okx", "instruments"), 600, okx_market.instruments)
@@ -1765,8 +1864,8 @@ class Handler(BaseHTTPRequestHandler):
                                               "refreshing": MarketStore.key("okx", "candles", symbol, tf)
                                               in market_store()._pending})
                 if path.path == "/api/quote":
-                    row = cached(("okx", "quote", symbol), 2, lambda: okx_market.quote(symbol))
-                    return self.respond(200, row)
+                    row, stale = stored_market_data(("okx", "quote", symbol), 3, lambda: okx_market.quote(symbol), background=True)
+                    return self.respond(200, {**row, "stale": stale})
                 if path.path == "/api/info":
                     info, stale = asset_profile(kind, symbol)
                     return self.respond(200, {**public_asset_info(info), "stale": stale})

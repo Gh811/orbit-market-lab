@@ -70,6 +70,12 @@ class MarketStoreTests(unittest.TestCase):
                                 for future in futures))
         self.assertEqual(count, 1)
 
+    def test_provider_placeholder_never_erases_a_complete_profile(self):
+        key=self.store.key('info','swap','AAPL');good={'type':'swap','symbol':'AAPL','summary':'苹果设计手机与电脑。','incomplete':False}
+        self.store.write(key,good,fetched_at=time.time()-100)
+        result,stale=self.store.get_or_refresh(key,1,lambda:{**good,'summary':'中文简介正在补全。','incomplete':True})
+        self.assertTrue(stale);self.assertEqual(result['summary'],good['summary']);self.assertEqual(self.store.read(key)[0]['summary'],good['summary'])
+
     def test_logo_roundtrip_category_and_replacement(self):
         image = b"\x89PNG\r\n\x1a\n" + b"a" * 60
         self.store.save_logo("BTC", "1", image, "verified", remote_url="https://example.test/btc.png")

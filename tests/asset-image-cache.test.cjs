@@ -1,0 +1,12 @@
+const assert=require('node:assert/strict');const {createAssetImageCache}=require('../assets/data.js');
+(async()=>{let clock=1000,requests=0;const rows=new Map(),cache={async match(key){return rows.get(typeof key==='string'?key:key.url)?.clone()},async put(key,response){rows.set(key,response.clone())},async keys(){return [...rows.keys()].map(url=>({url}))},async delete(key){return rows.delete(typeof key==='string'?key:key.url)}};
+const options={origin:'https://market.example',now:()=>clock,fetcher:async()=>{requests++;return new Response(new Uint8Array(64),{headers:{'Content-Type':'image/png'}})}};
+const storage={async open(){return cache}};let images=createAssetImageCache(storage,options);images.setPinned(['SZ000651']);
+const url='/api/logo-image?symbol=SZ000651';await Promise.all([images.get(url),images.get(url)]);assert.equal(requests,1,'concurrent cards share first request');
+images=createAssetImageCache(storage,options);images.setPinned(['SZ000651']);await images.get(url);assert.equal(requests,1,'new page uses persisted image');
+clock+=31*86400000;await images.get(url);assert.equal(requests,1,'watchlist image is retained when old');
+await images.get('/api/logo-image?symbol=SZ301308');clock+=31*86400000;await images.get('/api/logo-image?symbol=SZ301308');assert.equal(requests,3,'idle unselected image expires and reacquires');
+assert.equal(await images.get('https://other.example/logo.png'),null);assert.equal(await images.get('/api/auth/login'),null);assert.equal(requests,3,'only same-origin public logo endpoints can be persisted');
+const denied=createAssetImageCache({async open(){throw Error('storage blocked')}},options);assert.equal(await denied.get(url),null,'storage failure allows normal image fallback');
+console.log('Asset image cache PASS: persistent image bytes, single first request, pinned retention, inactivity expiry and strict public-image allowlist');
+})().catch(e=>{console.error(e);process.exitCode=1});

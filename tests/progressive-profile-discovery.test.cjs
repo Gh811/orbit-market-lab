@@ -1,7 +1,7 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const s=fs.readFileSync(require('node:path').join(__dirname,'../assets/app.js'),'utf8');
 const timers=[],posts=[];let release;
-const c={accountUser:'alice',accountSpace:'alice',assetId:a=>a.type+':'+a.symbol,setTimeout(fn){timers.push(fn);return 1},postApi:async(url,body)=>{posts.push({url,body});if(release)await new Promise(r=>release=r)},instrumentCatalog:[],matchCatalog:()=>[]};
+const c={accountUser:'alice',accountSpace:'alice',assetId:a=>a.type+':'+a.symbol,setTimeout(fn){timers.push(fn);return 1},postApi:async(url,body)=>{posts.push({url,body});if(release)await new Promise(r=>release=r)},instrumentCatalog:[],rememberAssetLogos(){},matchCatalog:()=>[]};
 vm.createContext(c);vm.runInContext(s.slice(s.indexOf('let assetDiscoveryTimer='),s.indexOf('\nfunction bindMobileAssetSearch',s.indexOf('let assetDiscoveryTimer='))),c);
 (async()=>{
  const items=Array.from({length:45},(_,i)=>({type:'ashare',symbol:'SH'+i}));c.recordDiscoveredAssets(items);c.recordDiscoveredAssets(items);assert.equal(timers.length,1);

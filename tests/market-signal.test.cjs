@@ -1,0 +1,10 @@
+const assert=require('node:assert/strict'),{quoteSignal}=require('../assets/data.js');
+assert.equal(quoteSignal({reachable:true,cached:true}).state,'warn','cached prices are not a disconnection');
+assert.equal(quoteSignal({liveRecent:true,cached:true,failures:5}).state,'ok','fresh push data clears a failed poll');
+assert.equal(quoteSignal({reachable:true}).state,'ok');
+assert.equal(quoteSignal({failures:1}).state,'warn','one timeout does not report a sustained outage');
+assert.equal(quoteSignal({failures:3}).state,'bad');
+assert.equal(quoteSignal({failures:3,cached:true}).state,'bad','an old cached price cannot hide repeated connection failures');
+assert.equal(quoteSignal({reachable:true,degraded:true,failures:3}).state,'warn','upstream failure is different from an unreachable server');
+assert.equal(quoteSignal({online:false,liveRecent:true}).state,'bad');
+console.log('Market signal PASS: live push, cached quote, transient retry, upstream failure and real disconnection');

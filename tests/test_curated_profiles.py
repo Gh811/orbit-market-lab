@@ -6,7 +6,7 @@ import ashare_market
 class CuratedProfilesTest(unittest.TestCase):
     def test_company_profiles_survive_provider_failure(self):
         with patch.object(ashare_market, 'company_profile', side_effect=AssertionError('curated profiles need no remote request')):
-            for symbol, business in [('SH600519','茅台酱香系列酒'),('SZ002384','印制电路板')]:
+            for symbol, business in [('SH600519','茅台酱香系列酒'),('SZ002384','印制电路板'),('SH600362','铜的采选')]:
                 info=ashare_market.info(symbol)
                 self.assertEqual(info['type'],'ashare')
                 self.assertIn(business,info['summary'])
@@ -18,7 +18,9 @@ class CuratedProfilesTest(unittest.TestCase):
             info=server.verified_asset_info('swap','TRUMP')
         self.assertEqual(info['pair'],'TRUMP-USDT-SWAP')
         self.assertLessEqual(len(info['summary']),100)
-        for field in ['contractAddress','maxSupply','chain']:self.assertNotIn(field,info)
+        for field in ['contractAddress','chain']:self.assertNotIn(field,info)
+        self.assertEqual(info['maxSupply'],'10 亿枚')
+        self.assertEqual(info['network'],'Solana / TRON')
         self.assertFalse(info['incomplete'])
         self.assertIn('川普',server.public_asset_info(info)['summary'])
         self.assertNotIn('price',info)
@@ -36,7 +38,7 @@ class CuratedProfilesTest(unittest.TestCase):
         self.assertEqual(body['website'],'https://gettrumpmemes.com/')
 
     def test_company_logos_are_actually_served_by_static_route(self):
-        for symbol in ['SH600519','SZ002384']:
+        for symbol in ['SH600519','SZ002384','SH600362']:
             handler=object.__new__(server.Handler);handler.headers={'Host':'localhost'}
             handler.path=server.ASHARE_BRAND_LOGOS[symbol][0]
             handler.respond=lambda status,body,*args,**kwargs:(status,body)

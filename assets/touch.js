@@ -73,35 +73,60 @@ else root.MarketPhysics=value})(typeof window==='object'?window:globalThis,()=>{
     return result;
   }
   let audio=null,last=-Infinity,soundSerial=0;
+  let muted=false,masterGain=null;
+  try{muted=localStorage.getItem('orbit_effects_muted_v1')==='1'}catch{}
+  function setMuted(value){muted=!!value;soundSerial++;last=-Infinity;if(masterGain&&audio)masterGain.gain.setValueAtTime(muted?0:1,audio.currentTime);try{localStorage.setItem('orbit_effects_muted_v1',muted?'1':'0')}catch{}return muted}
+  let soundBuffers=new Map(),buffersReady=false;
+  function audioStatus(){
+    const supported=typeof window!=='undefined'&&!!(window.AudioContext||window.webkitAudioContext);
+    return {supported,prepared:buffersReady,state:audio?.state||'uninitialized',enabled:!muted&&audio?.state==='running',muted};
+  }
+  function prepareAudio(){
+    if(typeof window==='undefined'||!(window.MarketDevice?.isMobile?.()??window.innerWidth<=720))return audioStatus();
+    try{
+      const Audio=window.AudioContext||window.webkitAudioContext;if(!Audio)return audioStatus();
+      if(!audio||audio.state==='closed'){audio=new Audio();last=-Infinity;soundBuffers=new Map();buffersReady=false;masterGain=audio.createGain();masterGain.gain.setValueAtTime(muted?0:1,audio.currentTime);masterGain.connect(audio.destination)}
+      if(!buffersReady){
+        for(const [kind,duration] of [['card',.24],['swap',.16],['operation',.12]]){
+          const buffer=audio.createBuffer(1,Math.ceil(audio.sampleRate*duration),audio.sampleRate),data=buffer.getChannelData(0);
+          let smooth=0;
+          for(let i=0;i<data.length;i++){
+            const noise=Math.random()*2-1;
+            if(kind==='card'){smooth=.35*smooth+.65*noise;data[i]=smooth*Math.sin(Math.PI*i/(data.length-1))}
+            else data[i]=noise*(1-i/data.length);
+          }
+          soundBuffers.set(kind,buffer);
+        }
+        buffersReady=true;
+      }
+    }catch{return {...audioStatus(),prepared:false,error:true}}
+    return audioStatus();
+  }
   function unlock(){
-    if(typeof window==='undefined'||!(window.MarketDevice?.isMobile?.()??window.innerWidth<=720))return Promise.resolve(false);
-    try{const Audio=window.AudioContext||window.webkitAudioContext;
-      if(!Audio)return Promise.resolve(false);
-      if(!audio||audio.state==='closed'){audio=new Audio();last=-Infinity}
+    if(!prepareAudio().prepared)return Promise.resolve(false);
+    try{
       if(audio.state==='running')return Promise.resolve(true);
       const context=audio;
+      // Prime the output silently in the gesture handler, before awaiting Safari's resume.
+      const prime=context.createBufferSource();prime.buffer=context.createBuffer(1,1,context.sampleRate);
+      prime.connect(context.destination);prime.onended=()=>prime.disconnect();prime.start(0);
       return Promise.resolve(context.resume()).then(()=>audio===context&&context.state==='running').catch(()=>false);
     }catch{return Promise.resolve(false)}
   }
   function sound(kind='card'){
+    if(muted)return;
     const serial=++soundSerial,requested=Date.now(),ready=unlock();
     if(audio?.state==='running'){playSound(kind);return}
     ready.then(ok=>{if(ok&&serial===soundSerial&&Date.now()-requested<350&&!(typeof document!=='undefined'&&document.hidden))playSound(kind)});
   }
   function playSound(kind){
-    if(!audio||audio.state!=='running'||audio.currentTime-last<.045)return;
+    if(muted||!audio||audio.state!=='running'||audio.currentTime-last<.045)return;
     last=audio.currentTime;
     try{
-      const t=audio.currentTime,gain=audio.createGain();gain.connect(audio.destination);
+      const t=audio.currentTime,gain=audio.createGain();gain.connect(masterGain||audio.destination);
       if(kind==='card'){
         // A soft air sweep: rounded attack/tail and no hard impact transient.
-        const duration=.24,buffer=audio.createBuffer(1,Math.ceil(audio.sampleRate*duration),audio.sampleRate),data=buffer.getChannelData(0);
-        let smooth=0;
-        for(let i=0;i<data.length;i++){
-          smooth=.35*smooth+.65*(Math.random()*2-1);
-          data[i]=smooth*Math.sin(Math.PI*i/(data.length-1));
-        }
-        const source=audio.createBufferSource();source.buffer=buffer;
+        const duration=.24,source=audio.createBufferSource();source.buffer=soundBuffers.get('card');
         const high=audio.createBiquadFilter();high.type='highpass';high.frequency.setValueAtTime(380,t);high.Q.value=.5;
         const low=audio.createBiquadFilter();low.type='lowpass';low.Q.value=.45;
         low.frequency.setValueAtTime(1800,t);low.frequency.exponentialRampToValueAtTime(5400,t+.095);low.frequency.exponentialRampToValueAtTime(1300,t+duration);
@@ -114,9 +139,7 @@ else root.MarketPhysics=value})(typeof window==='object'?window:globalThis,()=>{
         gain.gain.setValueAtTime(.0001,t);gain.gain.exponentialRampToValueAtTime(.045,t+.01);gain.gain.exponentialRampToValueAtTime(.0001,t+.1);
         source.connect(gain);source.start(t);source.stop(t+.11);source.onended=()=>{source.disconnect();gain.disconnect()};return;
       }
-      const duration=kind==='swap'?.16:.12,buffer=audio.createBuffer(1,Math.ceil(audio.sampleRate*duration),audio.sampleRate),data=buffer.getChannelData(0);
-      for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*(1-i/data.length);
-      const source=audio.createBufferSource();source.buffer=buffer;
+      const duration=kind==='swap'?.16:.12,source=audio.createBufferSource();source.buffer=soundBuffers.get(kind==='swap'?'swap':'operation');
       const filter=audio.createBiquadFilter();filter.type='bandpass';filter.frequency.setValueAtTime(2600,t);filter.frequency.exponentialRampToValueAtTime(900,t+duration);filter.Q.value=.65;
       gain.gain.setValueAtTime(.0001,t);gain.gain.exponentialRampToValueAtTime(.065,t+.015);gain.gain.exponentialRampToValueAtTime(.0001,t+duration);
       source.connect(filter);filter.connect(gain);source.start(t);source.onended=()=>{source.disconnect();filter.disconnect();gain.disconnect()};
@@ -124,7 +147,8 @@ else root.MarketPhysics=value})(typeof window==='object'?window:globalThis,()=>{
   }
   if(typeof document!=='undefined'){
     for(const type of ['pointerdown','touchend','click','keydown'])document.addEventListener(type,unlock,{capture:true,passive:true});
-    document.addEventListener('visibilitychange',()=>{if(document.hidden)soundSerial++});
+    document.addEventListener('visibilitychange',()=>{if(document.hidden)soundSerial++;else if(audio)unlock()});
+    window.addEventListener?.('pageshow',()=>{if(audio&&!document.hidden)unlock()});
   }
-  return {palette,percentages,sound};
+  return {palette,percentages,sound,prepareAudio,audioStatus,unlockAudio:unlock,setMuted,isMuted:()=>muted};
 });

@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from accounts import AccountStore, StateConflict, clean_state
+from accounts import AccountStore, StateConflict, clean_state, default_account_state
 import server
 
 
@@ -81,7 +81,7 @@ class AccountTests(unittest.TestCase):
             store = AccountStore(path)
             alice, alice_token = store.register("Alice_1", "long-secret-A1")
             bob, bob_token = store.register("Bob_2", "long-secret-B2")
-            self.assertIsNone(alice["state"])
+            self.assertEqual(alice["state"],default_account_state())
             self.assertNotEqual(alice["spaceId"], bob["spaceId"])
             self.assertRegex(alice["userId"], r"^U[A-F0-9]{20}$")
             self.assertNotEqual(alice["userId"], bob["userId"])
@@ -99,7 +99,7 @@ class AccountTests(unittest.TestCase):
             self.assertNotEqual(second_login["spaceId"], alice["spaceId"])
             self.assertEqual(second_login["state"]["selected"], "swap:MSFT")
             self.assertEqual(second_login["userId"], alice["userId"])
-            self.assertIsNone(store.session(bob_token)["state"])
+            self.assertEqual(store.session(bob_token)["state"],default_account_state())
             self.assertNotIn(b"long-secret-A1", path.read_bytes())
             store.logout(alice_token)
             self.assertIsNone(store.session(alice_token))

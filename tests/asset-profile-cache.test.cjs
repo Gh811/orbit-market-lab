@@ -1,0 +1,21 @@
+const assert=require('node:assert/strict');
+const {createAssetCache}=require('../assets/data.js');
+class Storage{constructor(){this.rows=new Map()}get length(){return this.rows.size}key(i){return [...this.rows.keys()][i]??null}getItem(k){return this.rows.get(k)??null}setItem(k,v){this.rows.set(k,String(v))}removeItem(k){this.rows.delete(k)}}
+const disk=new Storage();disk.setItem('account-state','private');let clock=1000000000;
+const options={now:()=>clock,maxEntries:2,idleDays:30};let cache=createAssetCache(disk,options);
+const profile=symbol=>({type:'ashare',symbol,summary:'真实公司简介'});
+cache.setPinned(['ashare:SZ000651']);cache.put('ashare:SZ000651',profile('SZ000651'));
+clock++;cache.put('ashare:SZ301308',profile('SZ301308'));clock++;cache.put('ashare:SH600519',profile('SH600519'));
+assert.equal(cache.get('ashare:SZ301308'),null,'old unselected data evicts first');
+assert.ok(cache.get('ashare:SZ000651'),'watchlist survives entry pressure');
+cache=createAssetCache(disk,options);clock+=31*86400000;
+assert.ok(cache.get('ashare:SZ000651'),'watchlist protection survives reopening');
+assert.equal(cache.get('ashare:SH600519'),null,'unselected idle records expire');
+cache.setPinned([]);clock+=31*86400000;cache.prune();assert.equal(cache.get('ashare:SZ000651'),null,'removed watchlist record expires after inactivity');
+assert.equal(cache.put('ashare:SZ301308',{...profile('SZ301308'),incomplete:true}),false,'incomplete profile cannot become permanent');
+assert.equal(cache.put('ashare:SZ301308',profile('SZ000651')),false,'identity mismatch is rejected');
+assert.equal(cache.put('ashare:SZ301308',{...profile('SZ301308'),summary:'业务简介正在补全。',incomplete:false}),false,'legacy false-complete text is not persisted');
+disk.setItem('orbit_asset_v1:ashare:SZ301308',JSON.stringify({profile:{...profile('SZ301308'),summary:'业务简介正在补全。'},t:clock,used:clock,pinned:true}));assert.equal(cache.get('ashare:SZ301308'),null,'old phone placeholder triggers a new database read');
+assert.equal(disk.getItem('account-state'),'private');
+assert.equal(createAssetCache({get length(){throw Error('blocked')},getItem(){throw Error('blocked')},setItem(){throw Error('blocked')}}).get('ashare:SZ000651'),null);
+console.log('Asset profile cache PASS: first-load persistence, watchlist protection, gradual inactivity eviction, identity and failure handling');

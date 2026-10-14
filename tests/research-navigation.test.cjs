@@ -1,0 +1,8 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const source=fs.readFileSync('backtest/app.js','utf8');
+function fixture(embedded=false){let click,backCalls=0,replacements=0,closes=0;const events={};const button={addEventListener(type,fn){click=fn},setAttribute(){},removeAttribute(){},blur(){}};
+const c={embedded,$:()=>button,window:{addEventListener(type,fn){events[type]=fn}},document:{referrer:'https://orbit.example/?space=current'},location:{origin:'https://orbit.example',replace(){replacements++}},history:{length:2,back(){backCalls++}},URL,clearTimeout(){},setTimeout(){return 1},parent:{document:{getElementById:()=>({open:true})},MarketMobilePages:{closeLocalDialog(){closes++}}}};
+vm.createContext(c);vm.runInContext(source.slice(source.indexOf('// A single return')),c);const action=(extra={})=>{let prevented=false;click({button:0,preventDefault(){prevented=true},...extra});return prevented};return{c,events,action,count:()=>({backCalls,replacements,closes})}}
+const direct=fixture();assert(direct.action());direct.action();direct.action();assert.equal(direct.count().backCalls,1);direct.events.pagehide();direct.events.pageshow();direct.c.document.referrer='';assert(direct.action());assert.equal(direct.count().replacements,1);assert(!direct.action({ctrlKey:true}));
+const nested=fixture(true);assert(nested.action());assert.equal(nested.count().closes,1);assert.equal(nested.count().backCalls,0);assert.equal(nested.count().replacements,0);
+console.log('Research navigation PASS: embedded close never navigates parent; standalone repeated taps guarded; direct entry fallback and modifier navigation preserved');

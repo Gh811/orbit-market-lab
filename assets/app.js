@@ -33,7 +33,7 @@ function openDetailDialog(dialog,focusTarget){
   // 浏览器会默认聚焦弹窗内第一个可聚焦控件（即右上角的 ×），Chrome 会把它判为
   // :focus-visible 而画出金色焦点环，看起来像“亮灯”。改为聚焦弹窗容器，键盘用户
   // 用 Tab 仍能移到 × 上并保留焦点环。
-  (guestPhone?dialog:(focusTarget||dialog)).focus();
+  (guestPhone?dialog:(focusTarget||dialog)).focus({preventScroll:true});
   return dialog;
 }
 
@@ -68,6 +68,7 @@ let selected=(saved.selected||'').startsWith('ashare:')?saved.selected:'swap:'+(
 
 let toggles=saved.toggles||{volume:true,levels:true,fib:true,ma:true};
 let targets=saved.targets||{};
+let walletHoldings=window.MarketWallet?.normalize(saved.wallet)||(Array.isArray(saved.wallet)?saved.wallet:[]);
 let accountUser=null,accountId=null,accountSpace='',accountSaveTimer=null,accountSaveChain=Promise.resolve(true),authMode='login';
 let registrationPetKind=0,companionWarmScheduled=false;
 let accountAvatarKind=0,accountAvatarChoice=0,accountAvatarCanChange=true,accountAvatarBusy=false;
@@ -90,7 +91,7 @@ function queueMini(a,refresh=false){
 }
 function queueProfile(a){
   const key=assetId(a);
-  if((profiles[key]&&Date.now()-(profileCachedAt[key]||0)<3600000)||profileLoading.has(key)||queuedProfile.has(key))return;
+  if((profiles[key]&&Date.now()-(profileCachedAt[key]||0)<PROFILE_FRESH_MS)||profileLoading.has(key)||queuedProfile.has(key))return;
   queuedProfile.add(key);profileJobs.push({...a});pumpBackgroundRequests();
 }
 function pumpBackgroundRequests(){
@@ -106,30 +107,31 @@ function pumpBackgroundRequests(){
     loadProfile(item).finally(()=>{activeProfileJobs--;pumpBackgroundRequests()});
   }
 }
-// Public market caches belong to this page session, never to account storage.
-const transientCacheKeys=new Set();
+// Public data persists on this phone; account state remains in its separate store.
 let pageCacheClosed=false;
-const transientCacheStorage={
-  getItem(key){transientCacheKeys.add(key);try{localStorage.removeItem(key);return sessionStorage.getItem(key)}catch{return null}},
-  setItem(key,value){transientCacheKeys.add(key);if(!pageCacheClosed)try{sessionStorage.setItem(key,value)}catch{}}
-};
+let publicMarketCache;
+try{publicMarketCache=window.MarketData?.createPublicCache?.(localStorage,sessionStorage)}catch{}
+publicMarketCache||={getItem(key){try{return sessionStorage.getItem(key)}catch{return null}},setItem(key,value){try{sessionStorage.setItem(key,value)}catch{}}};
 window.addEventListener('pagehide',event=>{
   if(event.persisted)return;
   pageCacheClosed=true;clearTimeout(candleSessionTimer);
-  for(const key of [...transientCacheKeys,CANDLE_SESSION])try{sessionStorage.removeItem(key)}catch{}
   window.MarketData?.clearTransientCache?.();
 });
-const PROFILE_CACHE='market_profiles_v26';
+const PROFILE_CACHE='market_profiles_v29';
+const PROFILE_FRESH_MS=30*86400000;
+let assetProfileCache,assetImageCache;try{assetProfileCache=window.MarketData?.createAssetCache?.(localStorage);if(window.caches)assetImageCache=window.MarketData?.createAssetImageCache?.(window.caches)}catch{}
+function syncProfilePins(){if(!accountUser)return;const retained=assets.filter(a=>a.groupId!==HOT_GROUP_ID);assetProfileCache?.setPinned(retained.map(a=>a.type+':'+a.symbol));assetImageCache?.setPinned(retained.map(a=>a.symbol))}
+syncProfilePins();
 const profileRetryTimers=new Map();
 const MINI_STORE='market_mini_cache_v1';
 const miniFetchedAt={};
-try{const savedMinis=JSON.parse(transientCacheStorage.getItem(MINI_STORE)||'{}');
+try{const savedMinis=JSON.parse(publicMarketCache.getItem(MINI_STORE)||'{}');
   for(const [key,entry] of Object.entries(savedMinis))
     if(Date.now()-entry.t<24*3600000&&Array.isArray(entry.rows)){miniData[key]=entry.rows;miniFetchedAt[key]=entry.t}} catch{}
 let profileCachedAt={};
-try{const cache=JSON.parse(transientCacheStorage.getItem(PROFILE_CACHE)||'{}');
-  for(const [id,record] of Object.entries(cache))if(record&&record.p&&Date.now()-record.t<7*86400000){
-    profiles[id]=record.p;profileCachedAt[id]=record.t;
+try{const cache=JSON.parse(publicMarketCache.getItem(PROFILE_CACHE)||'{}');
+  for(const [id,record] of Object.entries(cache))if(record&&record.p&&id===record.p.type+':'+record.p.symbol&&window.MarketData.profileReady(record.p)&&Date.now()-record.t<30*86400000){
+    assetProfileCache?.put(id,record.p,record.t);profiles[id]=record.p;profileCachedAt[id]=(record.p.incomplete||record.p.stale)?0:record.t;
   }}catch{}
 const newsPreviewCache=new Map();
 const CATALOG_STORE='okx_swap_catalog_v2';
@@ -186,7 +188,7 @@ function hydrateAssetNames(){
   const names=new Map(instrumentCatalog.map(item=>[item.symbol,item.name]));
   for(const asset of assets)if(names.has(asset.symbol))asset.name=names.get(asset.symbol);
 }
-try{let savedCatalog=JSON.parse(transientCacheStorage.getItem(CATALOG_STORE)||'null');
+try{let savedCatalog=JSON.parse(publicMarketCache.getItem(CATALOG_STORE)||'null');
 if(savedCatalog&&Array.isArray(savedCatalog.items)){
   instrumentCatalog=enrichCatalog(savedCatalog.items);catalogFetchedAt=Number(savedCatalog.t)||0}}catch{}
 // 首次访问也能立即本地匹配；后台完整目录随后替换项目快照。
@@ -208,9 +210,9 @@ const timeframeCache=new Map();
 const historyRequests=new Set();
 const historyRetryAfter=new Map();
 try{
-  const savedRows=JSON.parse(sessionStorage.getItem(CANDLE_SESSION)||'[]');
+  const savedRows=JSON.parse(publicMarketCache.getItem(CANDLE_SESSION)||'[]');
   if(Array.isArray(savedRows))for(const [key,value] of savedRows){
-    if(typeof key==='string'&&/^swap:[A-Z0-9]{1,15}\|(1m|5m|15m|1h|2h|4h|6h|1d|2d|1w|1M)$/.test(key)
+    if(typeof key==='string'&&/^(?:swap|ashare):[A-Z0-9]{1,15}\|(1m|5m|15m|1h|2h|4h|6h|1d|2d|1w|1M)$/.test(key)
       &&value&&Date.now()-value.fetchedAt<12*3600000&&Array.isArray(value.rows))
       timeframeCache.set(key,{rows:validBars(value.rows).slice(-cachedBarLimit(key.split('|')[1])),
         fetchedAt:value.fetchedAt,exhausted:value.exhausted===true});
@@ -237,8 +239,8 @@ function freezeInsight(key,result){
 
 const COIN_ICONS=new Set(['BTC','ETH','SOL','XRP','DOGE','ADA','LTC','AVAX','LINK','DOT','BNB','USDC','ZEC']);
 const OKX_ICONS=new Set(['BTC','ETH','AAPL','NVDA','SOXL','SNDK','MU','CRCL','KORU','MRVL']);
-const BRAND_ICONS=new Set(['SPCX','ZHONGJI','XIAOMI','SKHYNIX','SAMSUNG','QQQ','WDC','NKE','GOOGL','GOOG','TSLA','XAU','ANTHROPIC','INTC','OPENAI','SH600519','SZ002384']);
-const BRAND_ICON_PATHS={SH600519:'/assets/icons/brand/sh600519.png',SZ002384:'/assets/icons/brand/sz002384.png',SPCX:'/assets/icons/crypto/spcx.svg',SKHYNIX:'/assets/icons/brand/skhynix.png',
+const BRAND_ICONS=new Set(['SPCX','ZHONGJI','XIAOMI','SKHYNIX','SAMSUNG','QQQ','WDC','NKE','GOOGL','GOOG','TSLA','XAU','ANTHROPIC','INTC','OPENAI','SH600519','SZ002384','SH600362','SZ301308','SZ000651']);
+const BRAND_ICON_PATHS={SZ301308:'/assets/icons/brand/sz301308.png',SZ000651:'/assets/icons/brand/sz000651.png',SH600362:'/assets/icons/brand/sh600362.png',SH600519:'/assets/icons/brand/sh600519.png',SZ002384:'/assets/icons/brand/sz002384.png',SPCX:'/assets/icons/crypto/spcx.svg',SKHYNIX:'/assets/icons/brand/skhynix.png',
   ZHONGJI:'/api/logo-image?symbol=ZHONGJI',XIAOMI:'/api/logo-image?symbol=XIAOMI',
   SAMSUNG:'/assets/icons/brand/samsung.png',QQQ:'/assets/icons/brand/qqq.svg',
   WDC:'/assets/icons/brand/wdc.svg',
@@ -248,34 +250,60 @@ const BRAND_ICON_PATHS={SH600519:'/assets/icons/brand/sh600519.png',SZ002384:'/a
   ANTHROPIC:'/assets/icons/brand/anthropic.png',
   INTC:'/assets/icons/brand/intel.png',
   OPENAI:'/assets/icons/brand/openai.svg'};
-const LOGO_STORE='market_logo_cache_v6';
+const LOGO_STORE='market_logo_cache_v7';
 let resolvedLogos={};
 try{
-  resolvedLogos=JSON.parse(transientCacheStorage.getItem(LOGO_STORE)||'{}');
+  resolvedLogos=JSON.parse(publicMarketCache.getItem(LOGO_STORE)||'{}');
   // Retry images that the previous page policy blocked in the browser.
   for(const [symbol,entry] of Object.entries(resolvedLogos))
     if(entry?.source==='图标图片暂不可用')delete resolvedLogos[symbol];
-  transientCacheStorage.setItem(LOGO_STORE,JSON.stringify(resolvedLogos));
+  publicMarketCache.setItem(LOGO_STORE,JSON.stringify(resolvedLogos));
 }catch{}
-const pendingLogos=new Set(),logoQueue=[];
+function validLogoURL(url){
+  return typeof url==='string'&&(/^(?:\/api\/logo-image\?symbol=[A-Z0-9]{1,15}|\/assets\/icons\/(?:okx|brand)\/[a-z0-9-]+\.(?:png|svg))$/.test(url)||/^https:\/\/(?:coin-images\.coingecko\.com|assets\.coingecko\.com|cdn\.tickerlogos\.com|img\.loadlogo\.com)\//.test(url));
+}
+function rememberAssetLogos(items){
+  for(const item of items||[])if(item?.symbol&&validLogoURL(item.logo))resolvedLogos[item.symbol]={url:item.logo,source:item.logoSource||'已缓存的标的图标',expires:Date.now()+7*86400000};
+}
+rememberAssetLogos(instrumentCatalog);
+const pendingLogos=new Set(),logoQueue=[],logoRetryTimers=new Map(),logoRetryCounts=new Map(),logoLookupAt=new Map();
 let activeLogoLookups=0;
-function lookupLogo(symbol){
-  if(pendingLogos.has(symbol)||resolvedLogos[symbol]?.expires>Date.now())return;
-  pendingLogos.add(symbol);logoQueue.push(symbol);pumpLogoQueue();
+function retryLogo(symbol,delay=2000){
+  if(logoRetryTimers.has(symbol))return;
+  const attempts=(logoRetryCounts.get(symbol)||0)+1;logoRetryCounts.set(symbol,attempts);
+  if(attempts>8)return;
+  logoRetryTimers.set(symbol,setTimeout(()=>{
+    logoRetryTimers.delete(symbol);
+    if(!document.hidden&&(document.querySelector('[data-logo-symbol="'+symbol+'"]')||document.querySelector('#heroLogo[data-symbol="'+symbol+'"]'))){if(resolvedLogos[symbol]&&!resolvedLogos[symbol].url)resolvedLogos[symbol].expires=0;lookupLogo(symbol)}
+  },Math.min(15000,delay*attempts)));
+}
+function lookupLogo(symbol,urgent=false){
+  const existing=resolvedLogos[symbol];
+  if(existing?.url&&existing.expires>Date.now())return;
+  if(!urgent&&existing?.expires>Date.now())return;
+  if(urgent&&Date.now()-(logoLookupAt.get(symbol)||0)<2000)return;
+  if(pendingLogos.has(symbol)){
+    const index=logoQueue.indexOf(symbol);if(urgent&&index>0){logoQueue.splice(index,1);logoQueue.unshift(symbol)}return;
+  }
+  if(logoRetryTimers.has(symbol)){if(!urgent)return;clearTimeout(logoRetryTimers.get(symbol));logoRetryTimers.delete(symbol)}
+  pendingLogos.add(symbol);urgent?logoQueue.unshift(symbol):logoQueue.push(symbol);pumpLogoQueue();
 }
 function pumpLogoQueue(){
   while(activeLogoLookups<3&&logoQueue.length){
-    const symbol=logoQueue.shift();activeLogoLookups++;
-    api('/api/logo?symbol='+encodeURIComponent(symbol)).then(result=>{
-      const url=typeof result.url==='string'&&(/^(?:\/api\/logo-image\?symbol=[A-Z0-9]{1,15}|\/assets\/icons\/(?:okx|brand)\/[a-z0-9-]+\.(?:png|svg))$/.test(result.url)||/^https:\/\/(?:coin-images\.coingecko\.com|assets\.coingecko\.com|cdn\.tickerlogos\.com|img\.loadlogo\.com)\//.test(result.url))?result.url:'';
-      resolvedLogos[symbol]={url,source:result.source||'',expires:Date.now()+(url?7*86400000:300000)};
-      try{transientCacheStorage.setItem(LOGO_STORE,JSON.stringify(resolvedLogos))}catch{}
-      refreshResolvedLogo(symbol);scheduleWatch();if(current()?.symbol===symbol){renderHeroLogo();renderInfo()}
-      if(searchResults.some(item=>item.symbol===symbol)&&$('symbol').value.trim())renderSuggestions();
+    const symbol=logoQueue.shift();activeLogoLookups++;logoLookupAt.set(symbol,Date.now());
+    api('/api/logo?symbol='+encodeURIComponent(symbol),{timeoutMs:5000,retries:0}).then(async result=>{
+      const url=validLogoURL(result.url)?result.url:'';
+      resolvedLogos[symbol]={url,source:result.source||'',expires:Date.now()+(url?7*86400000:result.pending?0:30000)};
+      if(url){
+        const image=await prepareLogoImage(url).promise;
+        if(image){logoRetryCounts.delete(symbol);try{publicMarketCache.setItem(LOGO_STORE,JSON.stringify(resolvedLogos))}catch{}refreshResolvedLogo(symbol)}
+        else{resolvedLogos[symbol]={url:'',expires:0};retryLogo(symbol,6000)}
+      }else if(result.pending){
+        retryLogo(symbol,(Number(result.retryAfter)||2)*1000);
+      }
     }).catch(()=>{
-      resolvedLogos[symbol]={url:'',source:'图标来源暂不可用',expires:Date.now()+300000};
-      refreshResolvedLogo(symbol);scheduleWatch();if(current()?.symbol===symbol){renderHeroLogo();renderInfo()}
-      if(searchResults.some(item=>item.symbol===symbol)&&$('symbol').value.trim())renderSuggestions();
+      resolvedLogos[symbol]={url:'',source:'图标来源暂不可用',expires:Date.now()+10000};
+      retryLogo(symbol,3000);
     }).finally(()=>{pendingLogos.delete(symbol);activeLogoLookups--;pumpLogoQueue()});
   }
 }
@@ -322,15 +350,16 @@ const historyRange=(rows,period)=>rows.length+' 根真实 K 线 · '+period+
   ' · 最新 '+date(rows.at(-1).t);
 
 function stateSnapshot(){return {assets:assets.map(a=>({type:assetMarketType(a),symbol:a.symbol,groupId:a.groupId||'main',pinned:a.pinned===true,...(Number.isInteger(a.cardColor)?{cardColor:a.cardColor}:{})})),
-  groups,activeGroup:activeGroupId,selected,tf:deckDesktopTf||tf,scheme,swing,toggles,targets}}
+  groups,activeGroup:activeGroupId,selected,tf:deckDesktopTf||tf,scheme,swing,toggles,targets,wallet:walletHoldings}}
 function pendingKey(){return ACCOUNT_PENDING+accountSpace}
-function save(){const snapshot=stateSnapshot();accountDirty=true;
+function save(){syncProfilePins();const snapshot=stateSnapshot();accountDirty=true;
   try{if(accountSpace)localStorage.setItem(pendingKey(),JSON.stringify({t:Date.now(),baseRevision:accountRevision,
     base:accountBase,state:snapshot}))}catch{}
   if(accountUser){clearTimeout(accountSaveTimer);accountSaveTimer=setTimeout(syncAccount,35)}}
 function mergeStates(base,local,remote){
   if(!base)return local;
   const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b),out={...remote};
+  out.wallet=window.MarketWallet?.merge(base.wallet,local.wallet,remote.wallet)||local.wallet||remote.wallet||[];
   for(const key of ['selected','activeGroup','tf','scheme','swing','toggles','targets'])
     if(!same(local[key],base[key]))out[key]=local[key];
   const key=a=>(a.groupId||'main')+'|'+a.symbol;
@@ -389,10 +418,16 @@ function syncAccount(){
   }return false});
   return accountSaveChain;
 }
-function setStatus(text,bad=false){$('connection').textContent=text;
-$('connection').className='status '+(bad?'bad':'ok');
+let marketLiveAt=0,marketFailureCount=0,marketQuoteReady=false;
+function updateMarketSignal({reachable=false,degraded=false,cached=false}={}){
+  const signal=window.MarketData.quoteSignal({online:navigator.onLine!==false,liveRecent:Date.now()-marketLiveAt<30000,reachable,degraded,cached,failures:marketFailureCount});
+  setStatus(signal.text,signal.state==='bad',signal.state);
+}
+function setStatus(text,bad=false,state=bad?'bad':'ok'){$('connection').textContent=text;
+$('connection').className='status '+state;
+$('connection').title=text;$('connection').setAttribute('aria-label',text);
 const petStatus=$('petStatus');
-if(petStatus){petStatus.textContent=text;petStatus.className='petStatus '+(bad?'bad':'ok')}}
+if(petStatus){petStatus.textContent=text;petStatus.className='petStatus '+state;petStatus.title=text;petStatus.setAttribute('aria-label',text)}}
 function colors(){return scheme==='redUp'?{up:'#e94872',down:'#28b878'}:{up:'#28b878',down:'#e94872'}}
 function notify(title,body,kind='行情'){feed.unshift({title,body,kind,t:Date.now()});
 feed=feed.slice(0,35);
@@ -632,6 +667,13 @@ function symbolMark(symbol){
   mark.append(letters);
   return mark;
 }
+// White transparent artwork needs a contrasting circle, rather than a white placeholder.
+function logoSurfaceFor(image){
+  try{const canvas=document.createElement('canvas');canvas.width=canvas.height=16;const ctx=canvas.getContext('2d');ctx.drawImage(image,0,0,16,16);const pixels=ctx.getImageData(0,0,16,16).data;let visible=0,light=0;
+    for(let i=0;i<pixels.length;i+=4){if(pixels[i+3]<96)continue;visible++;if(Math.min(pixels[i],pixels[i+1],pixels[i+2])>215)light++}
+    return visible&&visible<220&&light/visible>.8?'#24415c':'#f4f7fa';
+  }catch{return '#f4f7fa'}
+}
 // Decode a URL once; every card starts with the same ready image on subsequent renders.
 const readyLogoImages=new Map();
 function prepareLogoImage(url){
@@ -643,15 +685,17 @@ function prepareLogoImage(url){
     image.onload=async()=>{try{if(image.decode)await image.decode()}catch{}record.ready=true;resolve(image)};
     image.onerror=()=>{record.failed=true;record.retryAt=Date.now()+60000;resolve(null)};
   });
-  readyLogoImages.set(url,record);image.src=url;
-  if(readyLogoImages.size>((window.MarketDevice?.isMobile?.()??window.innerWidth<=720)?24:128))readyLogoImages.delete(readyLogoImages.keys().next().value);
+  readyLogoImages.set(url,record);
+  if(typeof assetImageCache!=='undefined'&&assetImageCache&&/^\/(?:assets\/icons\/|api\/logo-image)/.test(url))assetImageCache.get(url).then(blob=>{if(blob){const objectURL=URL.createObjectURL(blob);record.objectURL=objectURL;if(record.retired)setTimeout(()=>URL.revokeObjectURL(objectURL),60000);image.src=objectURL}else image.src=url}).catch(()=>{image.src=url});
+  else image.src=url;
+  if(readyLogoImages.size>((window.MarketDevice?.isMobile?.()??window.innerWidth<=720)?24:128)){const oldest=readyLogoImages.keys().next().value,old=readyLogoImages.get(oldest);old.retired=true;if(old.objectURL)setTimeout(()=>URL.revokeObjectURL(old.objectURL),60000);readyLogoImages.delete(oldest)}
   return record;
 }
 function logoURLFor(a){
   const official=OKX_ICONS.has(a.symbol);
   return official?'/assets/icons/okx/'+a.symbol.toLowerCase()+'.png':
     BRAND_ICONS.has(a.symbol)?BRAND_ICON_PATHS[a.symbol]:
-    COIN_ICONS.has(a.symbol)?'/assets/icons/crypto/'+a.symbol.toLowerCase()+(['DOGE','SOL'].includes(a.symbol)?'.png':'.svg'):resolvedLogos[a.symbol]?.url||'';
+    COIN_ICONS.has(a.symbol)?'/assets/icons/crypto/'+a.symbol.toLowerCase()+(['DOGE','SOL'].includes(a.symbol)?'.png':'.svg'):resolvedLogos[a.symbol]?.url||(validLogoURL(a.logo)?a.logo:'');
 }
 function logoFor(a,large=false,deferLookup=false){
   const box=document.createElement('span');box.className=large?'heroLogo':'watchLogo';
@@ -660,10 +704,11 @@ function logoFor(a,large=false,deferLookup=false){
   const url=logoURLFor(a);
   box.title=official?'OKX 页面使用的标的图标':a.symbol==='XAU'?'黄金商品示意图；商品没有公司 Logo':a.symbol==='OPENAI'?'代码文字标识；非公司官方 Logo':BRAND_ICONS.has(a.symbol)?'公司品牌图标；非 OKX 官方图标':
     COIN_ICONS.has(a.symbol)?'本地币种识别图；非 OKX 官方图标':url?(resolvedLogos[a.symbol]?.source||'标的图标'):'代码标识；暂无核实的品牌图标';
-  if(!url){box.append(symbolMark(a.symbol));if(!deferLookup&&!official&&!BRAND_ICONS.has(a.symbol)&&!COIN_ICONS.has(a.symbol))lookupLogo(a.symbol);return box}
+  if(!url){box.append(symbolMark(a.symbol));if(!official&&!BRAND_ICONS.has(a.symbol)&&!COIN_ICONS.has(a.symbol))lookupLogo(a.symbol);return box}
   const record=prepareLogoImage(url),alreadyReady=record.ready;
-  const show=image=>{if(!image){box.classList.remove('logoPending');box.replaceChildren(symbolMark(a.symbol));box.title=a.symbol+' 代码标识，图标暂不可用';return}
+  const show=image=>{if(!image){box.classList.remove('logoPending');box.replaceChildren(symbolMark(a.symbol));box.title=a.symbol+' 代码标识，图标暂不可用';if(!official&&!BRAND_ICONS.has(a.symbol)&&!COIN_ICONS.has(a.symbol)){delete resolvedLogos[a.symbol];retryLogo(a.symbol,6000)}return}
     if(typeof updateLogoCardPalette==='function')updateLogoCardPalette(url,image);
+    if(typeof logoSurfaceFor==='function')box.style.setProperty('--logo-surface',logoSurfaceFor(image));
     const copy=image.cloneNode(false);copy.alt=a.symbol+' 标的图标';box.classList.remove('logoPending');box.replaceChildren(copy);
     if(!alreadyReady)box.classList.add('logoArrived');
   };
@@ -675,9 +720,10 @@ function logoFor(a,large=false,deferLookup=false){
 function refreshResolvedLogo(symbol){
   for(const box of document.querySelectorAll('[data-logo-symbol]')){
     if(box.dataset.logoSymbol!==symbol)continue;
-    const replacement=logoFor({symbol},box.classList.contains('heroLogo'));
+    const replacement=logoFor({symbol,type:box.dataset.market},box.classList.contains('heroLogo'));
     box.replaceWith(replacement);
   }
+  if($('heroLogo')?.dataset.symbol===symbol)renderHeroLogo();
 }
 function renderHeroLogo(){let a=current(),box=$('heroLogo');
 if(a&&box.dataset.symbol===a.symbol&&box.querySelector('img')?.naturalWidth>0)return;
@@ -1292,7 +1338,7 @@ function openInfoFor(id){
   const a=current();
   if(!a)return;
   renderInfo();
-  loadProfile(a,true);
+  loadProfile(a);
   openDetailDialog($('infoDialog'));
 }
 let infoPreviewRequest=0;
@@ -1315,11 +1361,24 @@ async function openInfoForPreview(item){
     if(sameSource()&&infoPreviewAsset===preview){profileErrorUntil[key]=Date.now()+30000;renderInfo()}
   }finally{if(serial===infoPreviewRequest)button?.classList.remove('deckInfoLoading')}
 }
-function briefAssetSummary(text,limit=80){
-  const plain=String(text||'简介暂未收录。').replace(/\s+/g,' ').trim();
-  if(plain.length<=limit)return plain;
-  const cut=plain.slice(0,limit-1),stop=Math.max(cut.lastIndexOf('。'),cut.lastIndexOf('！'),cut.lastIndexOf('？'));
-  return stop>=limit/2?cut.slice(0,stop+1):cut.replace(/[，,；;：:]$/,'')+'…';
+function briefAssetSummary(text,limit=240){
+  const plain=String(text||'').replace(/\s+/g,' ').trim();
+  if(!plain)return '简介暂未收录。';
+  const sentences=plain.match(/[^。！？!?]+[。！？!?]|[^。！？!?]+$/g)||[];
+  let result='',count=0;
+  for(const raw of sentences){
+    const sentence=raw.trim();
+    if(/(?:…|\.\.\.)$/.test(sentence))break;
+    const complete=/[。！？!?.]$/.test(sentence)?sentence:sentence+'。';
+    if(result.length+complete.length>limit)break;
+    result+=complete;count++;
+    if(count===2)break;
+  }
+  if(result)return /[。！？!?.]$/.test(result)?result:result+'。';
+  // Keep a complete primary business clause; never cut through words or a product list.
+  const clause=plain.split(/[，,；;。！？!?]/)[0].trim();
+  if(clause.length+1<=limit&&!/[：:、…]$/.test(clause)&&/主营|主要业务|提供|专注|从事|生产|销售|研发/.test(clause))return clause+'。';
+  return sentences[0]?.trim()||plain;
 }
 function renderInfo(){let a=infoPreviewAsset||current(),box=$('assetInfo');
 box.replaceChildren();
@@ -1372,7 +1431,8 @@ infoMetric(grid,'交易对',p.pair);
 infoMetric(grid,'交易平台',p.exchange);
 infoMetric(grid,'状态',p.status);
 infoMetric(grid,'最小价格变动',p.tickSize);
-infoMetric(grid,a.type==='ashare'?'证券类型':'每张合约面值',a.type==='ashare'?'A股现货':p.contractValue);
+infoMetric(grid,'产品类型',a.type==='ashare'?'股票现货':'永续合约');
+
 infoMetric(grid,'基础资产',p.base);
 infoMetric(grid,'计价资产',p.quote);
 box.append(grid);
@@ -1389,24 +1449,28 @@ addLink(p.website,'官方网站');
 if(links.childElementCount)box.append(links)}
 async function loadProfile(a,force=false){let k=assetId(a);
 if(profileLoading.has(k))return loadProfile.pending?.get(k);
-if(!force&&profiles[k]&&Date.now()-(profileCachedAt[k]||0)<3600000)return profiles[k];
+let restoredFromDisk=false;
+if(!profiles[k]){const cached=assetProfileCache?.get(k);if(cached){profiles[k]=cached.profile;profileCachedAt[k]=cached.t;restoredFromDisk=true;if(cached.profile.name){a.name=cached.profile.name;for(const item of assets)if(assetId(item)===k)item.name=cached.profile.name}}}
+if(!force&&profiles[k]&&Date.now()-(profileCachedAt[k]||0)<PROFILE_FRESH_MS){if(restoredFromDisk&&(selected===k||(infoPreviewAsset&&assetId(infoPreviewAsset)===k)))renderInfo();return profiles[k]}
 if(!force&&Date.now()<(profileErrorUntil[k]||0))return;
 profileLoading.add(k);
 const work=(async()=>{
 const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),18000);
 try{let p=await api('/api/info?type='+a.type+'&symbol='+encodeURIComponent(a.symbol),{signal:controller.signal});
 if(p.symbol!==a.symbol||p.type!==a.type||(a.type==='swap'&&p.pair!==a.symbol+'-USDT-SWAP'))throw new Error('标的资料身份不匹配');
+if(typeof window!=='undefined'&&window.MarketData?.profileReady&&!window.MarketData.profileReady(p))p.incomplete=true;
 profiles[k]=p;delete profileErrorUntil[k];
 if(profileRetryTimers.has(k)){clearTimeout(profileRetryTimers.get(k));profileRetryTimers.delete(k)}
-if(p.incomplete){const owner=accountSpace;profileRetryTimers.set(k,setTimeout(()=>{profileRetryTimers.delete(k);if(owner===accountSpace&&!document.hidden&&navigator.onLine!==false&&(assets.some(item=>assetId(item)===k)||infoPreviewAsset&&assetId(infoPreviewAsset)===k))loadProfile(a,true)},30000))}
-profileCachedAt[k]=(p.stale||p.incomplete)?Date.now()-3590000:Date.now();
-try{const entries=Object.fromEntries(Object.entries(profiles).slice(-50)
-  .map(([id,profile])=>[id,{p:profile,t:profileCachedAt[id]||Date.now()}]));
-  transientCacheStorage.setItem(PROFILE_CACHE,JSON.stringify(entries))}catch{}
-if(p.name&&p.name!==a.name)a.name=p.name;
+if(p.incomplete||p.stale){const owner=accountSpace;profileRetryTimers.set(k,setTimeout(()=>{profileRetryTimers.delete(k);if(owner===accountSpace&&!document.hidden&&navigator.onLine!==false&&(assets.some(item=>assetId(item)===k)||infoPreviewAsset&&assetId(infoPreviewAsset)===k))loadProfile(a,true)},p.incomplete?30000:2000))}
+profileCachedAt[k]=(p.stale||p.incomplete)?Date.now()-PROFILE_FRESH_MS+10000:Date.now();
+assetProfileCache?.put(k,p,profileCachedAt[k]);
+if(p.name){a.name=p.name;for(const asset of assets)if(assetId(asset)===k)asset.name=p.name;}
+if(p.logo)rememberAssetLogos([{...a,logo:p.logo,logoSource:p.logoSource}]);
+if(typeof petDeckGroup!=='undefined'&&petDeckGroup&&deckMembers()[petDeckIndex]?.symbol===a.symbol){const sub=$('deckCard')?.querySelector('.deckTitleRow span');if(sub&&p.name)sub.textContent=p.name;}
 scheduleWatch();
 if(selected===k||(infoPreviewAsset&&assetId(infoPreviewAsset)===k)){renderInfo();
 renderHeroLogo()}return p;}catch(e){profileErrorUntil[k]=Date.now()+30000;
+if(!profileRetryTimers.has(k)){const owner=accountSpace;profileRetryTimers.set(k,setTimeout(()=>{profileRetryTimers.delete(k);if(owner===accountSpace&&!document.hidden&&navigator.onLine!==false&&(assets.some(item=>assetId(item)===k)||infoPreviewAsset&&assetId(infoPreviewAsset)===k))queueProfile(a)},30000))}
 if(selected===k||(infoPreviewAsset&&assetId(infoPreviewAsset)===k))renderInfo()}finally{clearTimeout(timeout);profileLoading.delete(k)}})();
 (loadProfile.pending||=new Map()).set(k,work);
 try{return await work}finally{loadProfile.pending.delete(k)}
@@ -1426,10 +1490,10 @@ if(rows.length){if(data.stale&&miniData[k]?.length){miniErrorUntil[k]=Date.now()
   miniData[k]=rows;
   if(data.stale){miniErrorUntil[k]=Date.now()+15000;scheduleWatch();return}
   miniFetchedAt[k]=Date.now();
-  try{const cache=JSON.parse(transientCacheStorage.getItem(MINI_STORE)||'{}');
+  try{const cache=JSON.parse(publicMarketCache.getItem(MINI_STORE)||'{}');
     cache[k]={t:Date.now(),rows};
     for(const [id,entry] of Object.entries(cache))if(Date.now()-entry.t>24*3600000)delete cache[id];
-    transientCacheStorage.setItem(MINI_STORE,JSON.stringify(cache))}catch{}
+    publicMarketCache.setItem(MINI_STORE,JSON.stringify(cache))}catch{}
   scheduleWatch()}
 else miniErrorUntil[k]=Date.now()+30000;
 }catch{miniErrorUntil[k]=Date.now()+15000}finally{miniLoading.delete(k)}}
@@ -1453,7 +1517,7 @@ function openMobileMore(focusAdd=false){
       mobileMoved.push([marker,node]);body.append(node)}
   }
   openDetailDialog($('mobileMoreDialog'));
-  if(focusAdd){window.MarketMobilePages?.showSearch();requestAnimationFrame(()=>$('symbol').focus())}
+  if(focusAdd){window.MarketMobilePages?.showSearch();requestAnimationFrame(()=>$('symbol').focus({preventScroll:true}))}
 }
 function closeMobileMore(){
   for(const [marker,node] of mobileMoved){marker.replaceWith(node)}
@@ -1488,16 +1552,7 @@ function renderAccount(){
   if((window.MarketDevice?.isMobile?.()??window.innerWidth<=720))$('passwordDetails').open=false;
   $('accountButton').textContent=accountUser?accountUser+' · 账户':'登录 / 注册';
   $('accountButton').title='';
-  const petAccount=$('petAccountButton');
-  if(petAccount){
-    let label=petAccount.querySelector('.petAccountLabel');
-    if(!label){
-      label=document.createElement('span');label.className='petAccountLabel';
-      const glint=document.createElement('span');glint.className='petAccountGlint';glint.setAttribute('aria-hidden','true');
-      petAccount.replaceChildren(label,glint);
-    }
-    label.textContent=accountUser?accountUser:'登录 / 注册';
-  }
+  renderHomeAccountBadge();
   $('authSigned').hidden=!accountUser;
   $('authTabs').hidden=!!accountUser;
   $('authForm').hidden=!!accountUser;
@@ -1506,16 +1561,21 @@ function renderAccount(){
   $('accountId').textContent=accountId??'—';renderAccountAvatar();syncAuthMascot();
 }
 function setAccess(allowed){document.body.classList.toggle('authLocked',!allowed);
-  if(!allowed){document.body.classList.add('accountOverlay');openDetailDialog($('authDialog'),$('authUsername'))}
+  if(!allowed){
+    document.body.classList.add('accountOverlay');
+    if(document.documentElement.classList.contains('bootLoading')&&window.MarketBoot?.whenEntered){
+      // A modal makes the rest of the page inert even when invisible; keep the loader tappable.
+      if(!setAccess.pendingBootOpen){setAccess.pendingBootOpen=true;window.MarketBoot.whenEntered(()=>{setAccess.pendingBootOpen=false;if(!accountUser)openDetailDialog($('authDialog'),$('authUsername'))})}
+    }else openDetailDialog($('authDialog'),$('authUsername'));
+  }
   else {document.body.classList.remove('accountOverlay');if($('authDialog').open)$('authDialog').close()}}
-function defaultAccountState(){return {assets:[{type:'swap',symbol:'BTC',groupId:'main',pinned:false},
-  {type:'swap',symbol:'ETH',groupId:'main',pinned:false},
-  {type:'swap',symbol:'SNDK',groupId:'main',pinned:false},
-  {type:'swap',symbol:'MU',groupId:'main',pinned:false},
-  {type:'swap',symbol:'GOOGL',groupId:'main',pinned:false}],
-  groups:[{id:'main',name:'自选',petKind:authMode==='register'?registrationPetKind:0},{id:HOT_GROUP_ID,name:'热门'}],activeGroup:'main',
+function defaultAccountState(){return {assets:[
+  ...['BTC','ETH'].map(symbol=>({type:'swap',symbol,groupId:'main',pinned:false})),
+  ...['AAPL','MSFT','GOOGL','AMZN','NVDA','META','TSLA'].map(symbol=>({type:'swap',symbol,groupId:'gus7',pinned:false})),
+  ...['SZ002384','SH603986','SZ300308','SH600519'].map(symbol=>({type:'ashare',symbol,groupId:'gashare',pinned:false}))],
+  groups:[{id:'main',name:'自选',petKind:0,petSlot:0},{id:'gus7',name:'美股',petKind:1,petSlot:1},{id:'gashare',name:'A股',petKind:6,petSlot:2}],activeGroup:'main',
   selected:'swap:BTC',tf:'1d',scheme:'redUp',swing:1,
-  toggles:{volume:true,levels:true,fib:true,ma:true},targets:{}}}
+  toggles:{volume:true,levels:true,fib:true,ma:true},targets:{},wallet:[]}}
 function restoreAccount(result){
   accountUser=result.username;accountId=result.userId;accountSpace=result.spaceId||result.username;
   accountRevision=Number(result.stateUpdated)||0;
@@ -1538,14 +1598,17 @@ function restoreAccount(result){
 }
 let lastAccountCheck=0;
 function clearAccountView(){
+  marketLiveAt=0;marketFailureCount=0;marketQuoteReady=false;
   accountUser=null;accountId=null;accountSpace='';accountDirty=false;
+  for(const timer of logoRetryTimers.values())clearTimeout(timer);logoRetryTimers.clear();logoRetryCounts.clear();
   accountAvatarKind=0;accountAvatarChoice=0;accountAvatarCanChange=true;accountAvatarBusy=false;
   hotDay='';hotStale=false;
   if(searchPersistTimer){clearTimeout(searchPersistTimer);searchPersistTimer=null}
   localStorage.removeItem(ACCOUNT_MARKER);
   const pageUrl=new URL(location.href);pageUrl.searchParams.delete('space');
   history.replaceState(null,'',pageUrl);
-  assets=[];groups=[{id:'main',name:'自选'}];selected='';candles=[];quotes={};
+  assets=[];groups=[{id:'main',name:'自选'}];selected='';candles=[];quotes={};walletHoldings=[];
+  if($('walletDialog')?.open)$('walletDialog').close();
   $('watchlist').replaceChildren();$('chartStatus').textContent='请先登录';
   closePetManager();renderAccount();setAccess(false);renderPets();
 }
@@ -1567,6 +1630,7 @@ async function refreshAccount(){
 function applyAccountState(state){
   if(!state||!Array.isArray(state.assets)||!Array.isArray(state.groups))return;
   assets=state.assets.map(item=>({...item,type:assetMarketType(item)}));
+  syncProfilePins();
   hydrateAssetNames();
   groups=state.groups.map(item=>item.id==='main'?{...item,name:'自选'}:
     item.id===HOT_GROUP_ID?{...item,name:'热门'}:{...item});
@@ -1577,6 +1641,7 @@ function applyAccountState(state){
   tf=state.tf||'1d';scheme=state.scheme||'redUp';swing=Number(state.swing)||1;
   toggles=state.toggles||{volume:true,levels:true,fib:true,ma:true};
   targets=state.targets||{};
+  walletHoldings=window.MarketWallet?.normalize(state.wallet)||(Array.isArray(state.wallet)?state.wallet:[]);
   $('colorScheme').value=scheme;$('swing').value=String(swing);
   for(const id of ['showVolume','showLevels','showFib','showMA'])
     $(id).checked=toggles[id.slice(4).toLowerCase()]!==false;
@@ -1589,21 +1654,32 @@ function afterMobileEntry(callback){
   const run=()=>{if(!accountUser||owner!==accountSpace)return;if(document.documentElement.classList.contains('bootLoading')){setTimeout(run,250);return}callback()};run();
 }
 async function prepareMobileEntryVisuals(){
-  const status=(message,detail)=>window.MarketBoot?.stage?.(message,detail);
+  const status=(message,detail,progress)=>window.MarketBoot?.stage?.(message,detail,progress);
+  status('正在初始化音效引擎…','准备滑动、卡兜与伙伴操作音效');
+  if(typeof window.MarketPhysics?.prepareAudio!=='function')throw new Error('音效组件尚未加载，请重新加载');
+  if(typeof window.MarketNewsPaper?.create!=='function')throw new Error('新闻组件尚未加载，请重新加载');
+  if(typeof window.MarketWallet?.install!=='function')throw new Error('资产组件尚未加载');
+  installHomeUtilities();
+  const audio=window.MarketPhysics.prepareAudio();
+  if(audio.supported&&!audio.prepared)throw new Error('音效资源尚未准备完整，请重新加载');
+  status('音效资源已准备…',audio.supported?'✓ 滑动与操作音效已预生成':'当前浏览器不支持音效',52);
   if(accountUser){
     status('正在同步首屏卡组…','恢复自选卡组与热门榜单');
-    await loadDailyHot();
+    await Promise.all([loadDailyHot(),loadCatalog()]);
     if(!assets.some(a=>a.groupId===HOT_GROUP_ID))throw new Error('热门卡组尚未加载');
+    if(!instrumentCatalog?.some(a=>a.type==='ashare'))throw new Error('标的目录尚未加载，请重新加载');
+    status('首屏卡组与目录已同步','✓ 自选卡组、热门榜单与标的目录已确认',65);
   }
   status('正在准备字体与界面…','初始化字体、字号与移动端布局');
   if(document.fonts?.ready)await document.fonts.ready;
+  status('字体与界面已准备','✓ 字体与移动端布局已初始化',72);
   const roots=accountUser&&petHomeOn?[$('petHome')]:accountUser?[document.querySelector('.mast'),document.querySelector('.layout')]:[$('authDialog')];
   const urls=new Set(),pending=[];
   status('正在加载首屏插画…','加载背景与当前界面的个人形象');
   for(const root of roots){
     if(!root)continue;
     for(const match of getComputedStyle(root).backgroundImage.matchAll(/url\(["']?([^"')]+)["']?\)/g))urls.add(match[1]);
-    for(const node of root.querySelectorAll('.petArtwork image')){
+    for(const node of root.querySelectorAll('.petArtwork image,.petHelmetAvatar')){
       const url=node.currentSrc||node.getAttribute('src')||node.getAttribute('href')||node.getAttribute('xlink:href');if(url)urls.add(url);
     }
     for(const node of root.querySelectorAll('.authMascot,.petModel')){
@@ -1626,7 +1702,7 @@ async function prepareMobileEntryVisuals(){
     image.src=url;
   }));
   await Promise.all(pending);
-  status('正在完成首屏检查…','✓ 首屏背景与个人形象已解码');
+  status('正在完成首屏检查…','✓ 首屏背景与个人形象已解码',90);
 }
 async function bootAccount(attempt=0){
   window.MarketBoot?.stage?.('正在连接账户服务…',attempt?'重新连接账户服务':'连接账户服务，检查登录状态');
@@ -1639,7 +1715,7 @@ async function bootAccount(attempt=0){
     window.MarketBoot?.ready(prepareMobileEntryVisuals);warmCompanionArtwork();
   }catch{if(accountUser)return;
     $('authError').textContent=attempt<3?'账户服务连接中，正在自动重试…':'账户服务暂不可用，请稍后刷新页面重试。';
-    setAccess(false);window.MarketBoot?.fail(attempt<3?'正在重新连接…':'暂时连不上，请重试');
+    setAccess(false);window.MarketBoot?.fail(attempt<3?'正在重新连接…':'账户服务多次连接失败，请重新加载',{exhausted:attempt>=3});
     if(attempt<3)setTimeout(()=>{if(!accountUser)bootAccount(attempt+1)},500*2**attempt)}
 }
 function setAuthMode(mode){
@@ -1691,6 +1767,7 @@ function applyAvatarProfile(result,reset=false){
   const kind=Number.isInteger(result.avatarKind)&&result.avatarKind>=0&&result.avatarKind<8?result.avatarKind:(groups.find(g=>g.id==='main')?.petKind??0);
   if(reset||kind!==accountAvatarKind)accountAvatarChoice=kind;
   accountAvatarKind=kind;accountAvatarCanChange=result.avatarCanChange!==false;
+  renderHomeAccountBadge();
   renderAccountAvatar();syncAuthMascot();
 }
 function renderAccountAvatar(){
@@ -1803,15 +1880,15 @@ function rememberTimeframe(a,period,rows,fetchedAt=Date.now()){
       const active=current()?assetId(current())+'|'+tf:'';
       const entries=[...timeframeCache].sort(([left],[right])=>
         (right===active?1:0)-(left===active?1:0));
-      let remaining=20000;
+      let remaining=4000;
       const stored=[];
       for(const [entryKey,value] of entries){
         if(remaining<=0)break;
-        const rows=value.rows.slice(-Math.min(cachedBarLimit(entryKey.split('|')[1]),remaining));
+        const rows=value.rows.slice(-Math.min(600,cachedBarLimit(entryKey.split('|')[1]),remaining));
         remaining-=rows.length;
-        stored.push([entryKey,{rows,fetchedAt:value.fetchedAt,exhausted:value.exhausted}]);
+        stored.push([entryKey,{rows,fetchedAt:value.fetchedAt,exhausted:value.exhausted===true&&rows.length===value.rows.length}]);
       }
-      if(!pageCacheClosed)sessionStorage.setItem(CANDLE_SESSION,JSON.stringify(stored));
+      if(!pageCacheClosed)publicMarketCache.setItem(CANDLE_SESSION,JSON.stringify(stored));
     }catch{}
   },450);
 }
@@ -1904,7 +1981,9 @@ async function extendHistory(serial,a,period,before,target=HISTORY_TARGET[period
     $('chartStatus').textContent+=' · 更早历史暂不可用'}finally{historyRequests.delete(requestKey);updateHistoryMore()}
 }
 
+function prioritizeAssetDisplay(a){if(a){if(!logoURLFor(a))lookupLogo(a.symbol,true);loadProfile(a)}}
 async function loadAsset(){let serial=++loadSerial,a=current();
+prioritizeAssetDisplay(a);
 if(a?.type==='ashare'&&!ASHARE_PERIODS.has(tf))tf='1d';
 if(!mobileChartVisible()){backgroundRequestsReady=true;pumpBackgroundRequests();return}
 backgroundRequestsReady=false;
@@ -1992,12 +2071,11 @@ function renderNewsPreview(rows,error){
     note.textContent=error||(!a?'选择标的后显示相关新闻。':'正在获取 '+a.symbol+' 的新闻…');box.append(note);return}
   if(!rows.length){const note=document.createElement('p');note.className='sidebarNewsEmpty';
     note.textContent='暂时没有与 '+a.symbol+' 直接相关的新闻。';box.append(note);return}
-  for(const item of rows.slice(0,10)){
-    const row=document.createElement('article');row.className='sidebarNewsItem';
-    const link=document.createElement('a');link.href=item.url;link.target='_blank';link.rel='noopener noreferrer';link.textContent=item.headline;
-    const meta=document.createElement('small');meta.textContent=[item.source,Number(item.datetime)?date(Number(item.datetime)*1000):''].filter(Boolean).join(' · ');
-    row.append(link,meta);box.append(row)
-  }
+  rows.slice(0,10).forEach((item,index)=>{
+    const meta=[item.source,Number(item.datetime)?date(Number(item.datetime)*1000):''].filter(Boolean).join(' · ');
+    const summaryText=item.summary?new DOMParser().parseFromString(String(item.summary),'text/html').body.textContent.trim():'';
+    const paper=window.MarketNewsPaper.create(item,{index,meta,summaryText});if(paper)box.append(paper);
+  });
 }
 const newsRequests=new Map();
 function fetchAssetNews(a){
@@ -2036,14 +2114,14 @@ try{message=JSON.parse(e.data)}catch{return}
 if(message.arg?.channel!=='tickers'||!Array.isArray(message.data))return;
 for(const row of message.data){if(!instruments.includes(row.instId))continue;
 let symbol=row.instId.slice(0,-10),p=Number(row.last),t=Number(row.ts),base=Number(row.open24h);
-if(Number.isFinite(p)&&p>0&&Number.isFinite(t)&&t>0)onQuote({type:'swap',symbol},p,t,base)}};
+if(Number.isFinite(p)&&p>0&&Number.isFinite(t)&&t>0)onQuote({type:'swap',symbol},p,t,base,true)}};
 ws.onclose=()=>{clearInterval(wsPing);if(okxWS===ws)wsRetry=setTimeout(connectOkx,5000)}}catch{wsRetry=setTimeout(connectOkx,10000)}}
 async function pollQuote(){let a=current();
 if(!a||stockQuoteLoading||document.hidden||navigator.onLine===false)return;
 stockQuoteLoading=true;
 try{let q=await api('/api/quote?type='+a.type+'&symbol='+encodeURIComponent(a.symbol));
 if(Number(q.c)>0&&Number(q.t)>0)onQuote(a,Number(q.c),Number(q.t)*1000,Number(q.pc));
-setStatus('行情已连接')}catch(e){setStatus('行情未连接',true);
+marketQuoteReady=true;marketFailureCount=0;updateMarketSignal({reachable:true,cached:!!q.stale})}catch(e){const latest=quotes[assetId(a)];marketFailureCount++;updateMarketSignal({reachable:Number(e.status)>=500,degraded:true,cached:!!latest});
 $('assetMeta').textContent=e.message}finally{stockQuoteLoading=false}}
 async function pollWatchQuotes(){if(!assets.length||watchQuotesLoading||document.hidden||navigator.onLine===false)return;
 watchQuotesLoading=true;
@@ -2056,7 +2134,7 @@ for(let offset=0;offset<unique.length;offset+=30){
       if(Number(q?.c)>0&&Number(q?.t)>0)onQuote(a,Number(q.c),Number(q.t)*1000,Number(q.pc))}
   }catch{}
 }}finally{watchQuotesLoading=false}}
-function onQuote(a,p,t,base){let k=assetId(a),previous=quotes[k];
+function onQuote(a,p,t,base,live=false){if(live){marketQuoteReady=true;marketLiveAt=Date.now();marketFailureCount=0;updateMarketSignal({reachable:true})}let k=assetId(a),previous=quotes[k];
 if(previous&&t<previous.t)return;
 quotes[k]={p,t,base:base||previous?.base};
 let list=recentTicks[k]||(recentTicks[k]=[]);
@@ -2561,7 +2639,7 @@ b.onclick=()=>chooseSuggestion(item);
 box.append(b)})}
 const normalizeSearch=value=>String(value||'').normalize('NFKC').toLocaleLowerCase().replace(/[\s/_-]+/g,'');
 function searchTerms(item){
-  const common={BTC:['比特币','Bitcoin'],ETH:['以太坊','Ethereum'],SOL:['索拉纳','Solana'],DOGE:['狗狗币','Dogecoin'],TRUMP:['特朗普','川普','特朗普币','川普币','Official Trump'],XAU:['黄金','Gold'],XAG:['白银','Silver']};
+  const common={BTC:['比特币','Bitcoin'],ETH:['以太坊','Ethereum'],SOL:['索拉纳','Solana'],DOGE:['狗狗币','Dogecoin'],SH600519:['茅台','茅台酒','贵州茅台'],SZ002384:['东山','东山精密'],TRUMP:['特朗普','川普','特朗普币','川普币','Official Trump'],XAU:['黄金','Gold'],XAG:['白银','Silver']};
   const raw=[item.symbol,...(item.type==='ashare'?[item.code||item.symbol.slice(2)]:[item.symbol+'USDT',item.symbol+'USDTSWAP']),item.name,...(item.aliases||[]),...(common[item.symbol]||[])];
   const words=raw.flatMap(value=>String(value||'').split(/[\s/·()（）,，]+/));
   return [...new Set([...raw,...words].map(normalizeSearch).filter(Boolean))];
@@ -2594,26 +2672,30 @@ function matchCatalog(query,persist=true){
   }
   direct.sort((a,b)=>a.rank-b.rank||a.item.symbol.localeCompare(b.item.symbol));
   if(direct.length)return direct.slice(0,20).map(row=>({...row.item,matchType:'direct'}));
-  if(needle.length<3||needle.length>32)return [];
+  if(needle.length>32)return [];
+  if(needle.length===1)return instrumentCatalog.slice(0,5).map(item=>({...item,matchType:'related'}));
   const near=[];
   for(const row of remaining){
     let score=Infinity;
     for(const value of row.values){
       if(value.length>32||Math.abs(value.length-needle.length)>Math.ceil(Math.max(value.length,needle.length)*.45))continue;
-      const edits=editDistance(needle,value);
-      score=Math.min(score,edits/Math.max(needle.length,value.length)+
-        Math.abs(needle.length-value.length)*.015);
+      let edits=editDistance(needle,value);
+      for(let i=0;i<needle.length-1;i++){const swapped=needle.slice(0,i)+needle[i+1]+needle[i]+needle.slice(i+2);if(swapped===value)edits=Math.min(edits,1);}
+      const fullScore=edits/Math.max(needle.length,value.length)+Math.abs(needle.length-value.length)*.015;
+      score=Math.min(score,fullScore);
+      if(/[\u3400-\u9fff]/.test(needle)&&value.length>needle.length){for(let i=0;i<=value.length-needle.length;i++)score=Math.min(score,editDistance(needle,value.slice(i,i+needle.length))/needle.length+.12);}
     }
     near.push({...row,score});
   }
   near.sort((a,b)=>a.score-b.score||a.item.symbol.localeCompare(b.item.symbol));
-  const close=near.filter(row=>row.score<=.45);
-  return close.filter(row=>needle.length>=3||row.score===0).slice(0,5)
-    .map(row=>({...row.item,matchType:'close'}));
+  const close=near.filter(row=>row.score<=(needle.length===2?.52:.45));
+  const candidates=close.length?close:near.filter(row=>Number.isFinite(row.score)).slice(0,3);
+  return candidates.slice(0,5).map(row=>({...row.item,matchType:close.length?'close':'related'}));
 }
 // Both mobile pickers use the same immediate catalogue matches.
 let assetDiscoveryTimer=null,assetDiscoveryItems=new Map(),assetDiscoveryOwner='';
 function recordDiscoveredAssets(items){
+  rememberAssetLogos(items);
   if(!accountUser)return;
   if(assetDiscoveryOwner!==accountSpace){assetDiscoveryItems.clear();assetDiscoveryOwner=accountSpace}
   for(const item of items||[])if(item?.symbol&&['swap','ashare'].includes(item.type))assetDiscoveryItems.set(assetId(item),{type:item.type,symbol:item.symbol});
@@ -2640,10 +2722,10 @@ function bindMobileAssetSearch(input,search){
 }
 async function loadCatalog(){if(instrumentCatalog&&Date.now()-catalogFetchedAt<180000)return;if(catalogLoading)return catalogLoading;
 catalogLoading=api('/api/catalog').then(data=>{if(!Array.isArray(data.items))throw Error('合约目录格式无效');
-instrumentCatalog=enrichCatalog(data.items);catalogFetchedAt=Date.now();
+rememberAssetLogos(data.items);instrumentCatalog=enrichCatalog(data.items);catalogFetchedAt=Date.now();
 catalogSearchIndex=null;
 hydrateAssetNames();renderWatch();
-try{transientCacheStorage.setItem(CATALOG_STORE,JSON.stringify({t:Date.now(),items:data.items}))}catch{}
+try{publicMarketCache.setItem(CATALOG_STORE,JSON.stringify({t:Date.now(),items:data.items}))}catch{}
 if($('symbol').value.trim())searchSymbols();if(petManagerGroup&&$('petOwnSearch')?.value.trim())searchPetAssets()}).catch(e=>{
 if(!instrumentCatalog&&$('symbol').value.trim())$('addError').textContent='合约列表暂不可用：'+e.message
 }).finally(()=>{catalogLoading=null});
@@ -2725,7 +2807,7 @@ save();
 applyReorderMode(false);
 connectOkx();
 loadAsset();
-loadProfile(item,true)}
+loadProfile(item)}
 async function setup(){let a=current();
 if(a)selected=assetId(a);
 setupGroupScrollRail();
@@ -2963,8 +3045,9 @@ setupPetHome();
 renderFeed();
 await setupAccount();
 // Account restoration starts its data requests after the stable entry is visible.
-api('/api/status').then(x=>setStatus(x.marketReady?'行情已连接':'行情未连接',!x.marketReady)).catch(()=>setStatus('行情未连接',true));
-setInterval(()=>{if(accountUser&&!document.hidden&&mobileChartVisible())pollQuote()},5000);
+api('/api/status').then(()=>{if(!marketQuoteReady&&!marketFailureCount)updateMarketSignal({reachable:true})}).catch(()=>{marketFailureCount++;updateMarketSignal({cached:!!quotes[assetId(current()||{})]})});
+window.addEventListener('offline',()=>updateMarketSignal());
+setInterval(()=>{if(accountUser&&!document.hidden)pollQuote()},5000);
 setInterval(()=>{if(accountUser&&!document.hidden)pollWatchQuotes()},15000);
 setInterval(()=>{if(accountUser)refreshCandles()},5000);
 setInterval(()=>{if(accountUser)refreshMinis()},300000);
@@ -3331,7 +3414,7 @@ function openPetWorld(kind){
   const back=document.createElement('button');back.type='button';back.className='mobilePageBack';back.setAttribute('aria-label','返回图鉴');back.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 5 8.5 12 15.5 19"/></svg>';back.onclick=()=>dialog.close();
   const title=document.createElement('strong');title.className='mobilePageTitle';title.textContent='伙伴世界';head.append(back,title);
   const body=document.createElement('section');body.className='petWorldBody';
-  body.innerHTML='<div class="petWorldExhibit"><div class="petWorldStars" aria-hidden="true"></div><div class="petGlassCase"><div class="petWorldOrbit" aria-hidden="true"></div><div class="petGlassRoof"></div><div class="petGlassWall"></div><img class="petCylinderArtwork" src="/assets/icons/crypto/cryotank.png?v=20261012-cylinder90" alt="" aria-hidden="true" decoding="async"><img class="petCylinderFront" src="/assets/icons/crypto/glassfront.svg?v=20261013-glass-front100" width="600" height="900" alt="" aria-hidden="true" decoding="async"><div class="petWorldSubject"><div class="petWorldTurntable" aria-hidden="true"></div><img class="petWorldCharacter" width="320" height="320" alt="" draggable="false"></div><div class="petGlassFloor"></div><div class="petGlassHalo" aria-hidden="true"></div><div class="petGlassBase"><span>ORBIT · SANCTUARY</span></div><div class="petGlassReflection"></div></div><p class="petWorldPlaque"></p><button type="button" class="petWorldTurnStatus" aria-live="polite"></button></div><div class="petWorldInfo"><span class="petWorldEyebrow">ORBIT ARCHIVE</span><h2></h2><p class="petWorldStory"></p><dl class="petWorldStats"></dl><p class="petWorldFiction">星轨世界观 · 本体尺度设定，展舱为等比例缩影</p></div>';
+  body.innerHTML='<div class="petWorldExhibit"><div class="petWorldStars" aria-hidden="true"></div><div class="petGlassCase"><div class="petWorldOrbit" aria-hidden="true"></div><div class="petGlassRoof"></div><div class="petGlassWall"></div><img class="petCylinderArtwork" src="/assets/icons/crypto/cryotank.png?v=20261012-cylinder90" alt="" aria-hidden="true" decoding="async"><div class="petWorldSubject"><div class="petWorldTurntable" aria-hidden="true"></div><img class="petWorldCharacter" width="320" height="320" alt="" draggable="false"></div><div class="petGlassFloor"></div><div class="petGlassHalo" aria-hidden="true"></div><div class="petGlassBase"><span>ORBIT · SANCTUARY</span></div><div class="petGlassReflection"></div></div><p class="petWorldPlaque"></p><button type="button" class="petWorldTurnStatus" aria-live="polite"></button></div><div class="petWorldInfo"><span class="petWorldEyebrow">ORBIT ARCHIVE</span><h2></h2><p class="petWorldStory"></p><dl class="petWorldStats"></dl><p class="petWorldFiction">星轨世界观 · 本体尺度设定，展舱为等比例缩影</p></div>';
   dialog.append(head,body);document.body.append(dialog);setupPetWorldRotation(dialog);
  }
  disposePetWorldModel(dialog);dialog.dataset.kind=String(kind);dialog.style.setProperty('--world-accent',profile.color);
@@ -3384,18 +3467,18 @@ function openPetHelp(){
   if(!dialog){
     dialog=document.createElement('dialog');dialog.id='petHelpDialog';dialog.className='detailDialog petHelpDialog';dialog.setAttribute('aria-label','使用指南');
     const panel=document.createElement('section');panel.className='petHelpPanel';
-    const head=document.createElement('header');head.className='panelhead';
-    const title=document.createElement('h2');title.textContent='使用指南';
-    const close=document.createElement('button');close.type='button';close.className='dialogClose';close.textContent='×';close.setAttribute('aria-label','关闭使用指南');close.onclick=()=>dialog.close();head.append(title,close);
+    const head=document.createElement('header');head.className='mobilePageHeader';
+    const title=document.createElement('strong');title.className='mobilePageTitle';title.textContent='使用指南';
+    const close=document.createElement('button');close.type='button';close.className='mobilePageBack';close.setAttribute('aria-label','返回');close.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 5 8.5 12 15.5 19"/></svg>';close.onclick=()=>{if(window.MarketMobilePages?.back)window.MarketMobilePages.back();else returnToPetHome()};head.append(close,title);
     const intro=document.createElement('p');intro.className='petHelpIntro';intro.textContent='从一个伙伴开始，把关注的标的装进卡兜。';
     const list=document.createElement('ol');list.className='petHelpSteps';
     for(const [label,text] of [
-      ['进入分组','单击伙伴查看卡牌；双击伙伴，修改名字、形象或管理卡兜。单击空位可以创建新分组。'],
-      ['添加标的','在分组的卡兜里单击“＋”，输入代码或名称的前几个字，候选会自动出现。单击候选即可添加。'],
-      ['浏览卡牌','左右滑动切换标的，滑动越多，下一张越靠近。下方数字显示当前卡牌进度。'],
-      ['查看资料与图表','单击卡牌上的 Logo 查看标的资料；单击小走势图打开 K 线，选择需要查看的周期。'],
-      ['整理卡兜','拖动卡牌可以调整顺序。向任意方向拖出卡兜后松手即可移除；松手前拖回来就会保留。'],
-      ['阅读新闻','单击右上角“新闻”，再单击搜索图标选择标的。输入前几个字即可匹配，空输入时可以浏览推荐标的。']
+      ['进入分组','单击伙伴看卡牌，双击管理分组。单击空位新建分组。'],
+      ['添加标的','卡兜里点“＋”，搜索代码或名称，再点候选添加。'],
+      ['浏览卡牌','左右滑动切换标的，下方数字显示卡牌进度。'],
+      ['查看资料与图表','点 Logo 看资料，点走势图看 K 线并选择周期。'],
+      ['整理卡兜','拖动调整顺序，拖出卡兜松手移除；松手前拖回可保留。'],
+      ['阅读新闻','点“新闻”，搜索选择标的；空输入可浏览热门推荐。']
     ]){
       const item=document.createElement('li'),name=document.createElement('h3'),body=document.createElement('p');name.textContent=label;
       for(const part of text.split(/(双击|单击|左右滑动|拖动|松手|自动出现)/)){
@@ -3406,7 +3489,7 @@ function openPetHelp(){
       }
       item.append(name,body);list.append(item);
     }
-    panel.append(head,intro,list);dialog.append(panel);document.body.append(dialog);
+    panel.append(intro,list);dialog.append(head,panel);document.body.append(dialog);
   }
   openDetailDialog(dialog);
 }
@@ -3414,6 +3497,15 @@ function installPetHelpEntry(newsButton){
   const button=document.createElement('button');button.id='petHomeHelp';button.className='petHomeHelp';button.type='button';button.setAttribute('aria-label','打开使用指南');
   button.innerHTML='<svg viewBox="0 0 40 40" aria-hidden="true"><circle class="petGuideHalo" cx="20" cy="20" r="17" fill="none" stroke="#a8dbe0" stroke-opacity=".35"/><circle cx="20" cy="20" r="13" fill="#162b39" stroke="#d6b579" stroke-width="1.4"/><path d="M20 5v3m0 24v3M5 20h3m24 0h3" stroke="#d6b579" stroke-width="1.4" stroke-linecap="round"/><g class="petGuideNeedle"><path d="m20 9 5 11-5 11-5-11Z" fill="#a4dce0"/><path d="m20 9 5 11h-10Z" fill="#eed2a0"/><circle cx="20" cy="20" r="2" fill="#f7e5bd"/></g><circle class="petGuideStar" cx="32" cy="8" r="2" fill="#c9ecea"/></svg><span>指南</span>';
   button.onclick=openPetHelp;newsButton.after(button);
+}
+function renderHomeAccountBadge(){
+  const button=$('petAccountButton');if(!button)return;
+  window.MarketWallet?.accountBadge(button,{url:companionArtworkUrl(accountAvatarKind),name:SPACE_PETS[accountAvatarKind]?.name||'星际伙伴',status:$('petStatus'),username:accountUser});
+}
+function installHomeUtilities(){
+  if(!petHomeBuilt)return;
+  window.MarketWallet?.install({root:$('petHome'),open:openDetailDialog,close:dialog=>window.MarketMobilePages?.closeLocalDialog?window.MarketMobilePages.closeLocalDialog(dialog):dialog.close(),getOwner:()=>accountSpace,getEntries:()=>walletHoldings,onSave:entries=>{walletHoldings=entries;save()}});
+  renderHomeAccountBadge();
 }
 function buildPetHome(){
   petHomeBuilt=true;
@@ -3444,7 +3536,7 @@ function buildPetHome(){
  <path d="m43 14 .8 2.7 2.7.8-2.7.8-.8 2.7-.8-2.7-2.7-.8 2.7-.8Z" fill="#e6ffff"/>
  <path d="m11 45 .5 1.6 1.6.5-1.6.5-.5 1.6-.5-1.6-1.6-.5 1.6-.5Z" fill="#e5dbff" opacity=".85"/>
 </svg><strong class="petBrandText">星轨</strong></button>
-    <div class="petHeadRight"><span class="petStatus ok" id="petStatus">连接中</span>
+    <div class="petHeadRight"><span class="petStatus warn" id="petStatus">连接中</span>
     <button class="petHomeHot" id="petHomeHot" type="button" aria-label="热门卡组"><svg class="petHotFlame" viewBox="0 0 36 44" aria-hidden="true"><path class="petFlameOuter" fill="#ff7339" d="M19 1c3 10 12 12 12 23 0 10-6 18-15 18S2 35 3 26c1-6 5-9 8-13-1 7 1 9 3 10C19 16 14 9 19 1Z"/><path fill="#ffb64b" d="M20 13c0 7 7 10 7 16 0 7-5 12-11 12S7 36 8 30c1-4 4-7 6-10-1 5 1 7 2 8 3-4 2-10 4-15Z"/><path fill="#fff0a4" d="M18 27c1 4 4 5 4 9 0 3-2 5-5 5s-5-2-5-5c0-3 3-5 3-7 0 3 1 4 2 4l1-6Z"/></svg><span>热门</span></button>
     <button class="petHeadAccount" id="petAccountButton" type="button">登录 / 注册</button></div>`;
   root.append(head);
@@ -3467,10 +3559,31 @@ function buildPetHome(){
   const newsButton=document.createElement('button');newsButton.id='petHomeNews';newsButton.type='button';newsButton.className='petHomeNews';newsButton.setAttribute('aria-label','新闻');
   newsButton.innerHTML='<img src="/assets/icons/crypto/newspaper.svg" alt="" aria-hidden="true"><span>新闻</span>';
   newsButton.onclick=openPetNews;$('petHomeHot').after(newsButton);
-  const researchButton=document.createElement('button');researchButton.id='petHomeBacktest';researchButton.type='button';researchButton.className='petHomeBacktest';researchButton.setAttribute('aria-label','打开策略回测');
-  researchButton.innerHTML='<svg viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="researchMetal" x2="1" y2="1"><stop stop-color="#edf9fc"/><stop offset=".45" stop-color="#85b6c7"/><stop offset="1" stop-color="#31586b"/></linearGradient></defs><rect x="5" y="7" width="38" height="28" rx="5" fill="url(#researchMetal)"/><rect x="8" y="10" width="32" height="21" rx="3" fill="#0b2433"/><path class="researchTrace" d="M11 25 17 21 22 24 28 16 36 13" fill="none" stroke="#74f1e4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 35h6v5h8v3H13v-3h8Z" fill="url(#researchMetal)"/><circle class="researchPower" cx="36" cy="33" r="1" fill="#89ffee"/></svg><span>回测</span>';
-  researchButton.onclick=()=>{location.href='/backtest/'};newsButton.after(researchButton);
+  const researchButton=document.createElement('button');researchButton.id='petHomeBacktest';researchButton.type='button';researchButton.className='petHomeBacktest';researchButton.setAttribute('aria-label','打开策略');
+  researchButton.innerHTML='<svg viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="researchMetal" x2="1" y2="1"><stop stop-color="#edf9fc"/><stop offset=".45" stop-color="#85b6c7"/><stop offset="1" stop-color="#31586b"/></linearGradient></defs><rect x="5" y="7" width="38" height="28" rx="5" fill="url(#researchMetal)"/><rect x="8" y="10" width="32" height="21" rx="3" fill="#0b2433"/><path class="researchTrace" d="M11 25 17 21 22 24 28 16 36 13" fill="none" stroke="#74f1e4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 35h6v5h8v3H13v-3h8Z" fill="url(#researchMetal)"/><circle class="researchPower" cx="36" cy="33" r="1" fill="#89ffee"/></svg><span>策略</span>';
+  researchButton.onclick=()=>{
+    researchButton.classList.remove('touchPressed','touchReleased');researchButton.blur();
+    let dialog=$('researchDialog');
+    if(!dialog){
+      dialog=document.createElement('dialog');dialog.id='researchDialog';dialog.className='mobileSheet researchDialog';dialog.setAttribute('aria-label','策略');
+      const header=document.createElement('header');header.className='researchSheetHead';
+      const back=document.createElement('button');back.type='button';back.id='researchClose';back.className='researchSheetBack';back.setAttribute('aria-label','返回主界面');back.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 5 8.5 12 15.5 19"/></svg>';
+      back.onclick=()=>window.MarketMobilePages?.closeLocalDialog?window.MarketMobilePages.closeLocalDialog(dialog):dialog.close();
+      const title=document.createElement('strong');title.textContent='策略';header.append(back,title);
+      const host=document.createElement('div');host.className='researchFrameHost';dialog.append(header,host);document.body.append(dialog);
+      window.addEventListener('message',event=>{const active=host.querySelector('iframe');if(!dialog.open||!active||event.source!==active.contentWindow||event.origin!==location.origin||event.data?.type!=='orbit-research-ready')return;active.classList.add('researchFrameReady');host.querySelector('.mobilePageLoading')?.remove();host.setAttribute('aria-busy','false')});
+      dialog.addEventListener('close',()=>{if(dialog.open)return;host.replaceChildren();researchButton.blur();researchButton.classList.remove('touchPressed','touchReleased')});
+      dialog.addEventListener('cancel',event=>{event.preventDefault();back.click()});
+    }
+    if(dialog.open)return;
+    const frame=document.createElement('iframe');frame.title='策略内容';
+    frame.addEventListener('load',()=>{if(frame.contentDocument?.documentElement.dataset.researchReady==='true'){frame.classList.add('researchFrameReady');frame.parentElement?.querySelector('.mobilePageLoading')?.remove();frame.parentElement?.setAttribute('aria-busy','false')}},{once:true});
+    frame.src='/backtest/?embedded=1';
+    const host=dialog.querySelector('.researchFrameHost');host.setAttribute('aria-busy','true');host.replaceChildren(createMobilePageLoading(),frame);openDetailDialog(dialog);
+  };
+  newsButton.after(researchButton);
   installPetHelpEntry(newsButton);
+  installHomeUtilities();
   wirePetStage();
   buildDeckShell();
   setupPetRandomActions();
@@ -3905,7 +4018,10 @@ function showPetNotice(message){
 function setPetManagerNotice(message){
   $('petManagerMessage').textContent='';showPetNotice(message);
 }
-function showPetAlreadyAdded(row){showPetNotice('已经在自选中')}
+function showPetAlreadyAdded(row){
+  const badge=row?.querySelector('.petSearchAdded');if(!badge)return;
+  row.dataset.added='true';badge.textContent='已在自选中';badge.removeAttribute('aria-hidden');
+}
 
 function cardsOrder(){return [...$('petPouchCards').querySelectorAll('[data-watch-id]')].map(card=>card.dataset.watchId)}
 async function removePetPouchAsset(asset,group,epoch,owner){
@@ -3961,7 +4077,7 @@ async function insertPetCard(item,row){
   const asset={type:item.type||'swap',symbol:item.symbol,name:item.name,groupId:group,pinned:false,cardColor:randomCardColor()};
   const start=row.getBoundingClientRect(),pouchBox=$('petPouchCards').getBoundingClientRect();
   const slot=$('petPouchCards').querySelector('.petPouchAdd');const target=slot?slot.getBoundingClientRect():{left:pouchBox.left,top:pouchBox.top};
-  const flying=row.cloneNode(true);flying.className='petFlyingCard';flying.disabled=true;flying.setAttribute('aria-hidden','true');
+  const flying=row.cloneNode(true);flying.className='petFlyingCard petSearchResultCard';flying.disabled=true;flying.setAttribute('aria-hidden','true');
   Object.assign(flying.style,{left:start.left+'px',top:start.top+'px',width:start.width+'px',height:start.height+'px'});document.body.append(flying);
   window.MarketPhysics?.sound('insert');
   try{
@@ -4002,14 +4118,16 @@ async function searchPetAssets(){
     }
     if(!query){const heading=document.createElement('p');heading.textContent='热门推荐';box.append(heading)}
     if(serial!==petManagerSerial||group!==petManagerGroup||owner!==accountSpace)return;
+    rememberAssetLogos(items);
     for(const item of items.slice(0,20)){
       if(!/^[A-Z0-9]{1,15}$/.test(item.symbol))continue;
       const row=document.createElement('button');row.type='button';row.className='petSearchResultCard';row.dataset.symbol=item.symbol;row.dataset.market=item.type||'swap';
-      const label=document.createElement('span'),code=document.createElement('strong'),name=document.createElement('small');code.textContent=item.symbol;name.textContent=item.name||item.symbol;const market=document.createElement('small');market.className='petSearchMarket';market.textContent=item.type==='ashare'?'A股 · 人民币':'OKX · USDT 永续';label.append(code,name,market);
+      const label=document.createElement('span'),code=document.createElement('strong'),name=document.createElement('small');label.className='petSearchResultLabel';code.textContent=item.symbol;name.textContent=item.name||item.symbol;const market=document.createElement('small');market.className='petSearchMarket';market.textContent=item.type==='ashare'?'A股 · 人民币':'OKX · USDT 永续';label.append(code,name,market);
       const added=petManagedAssets().some(a=>assetId(a)===assetId({type:item.type||'swap',symbol:item.symbol}));
       const fresh=added&&petSessionAdds.has(assetId({type:item.type||'swap',symbol:item.symbol}));
       row.dataset.added=String(added);
-      if(added){const badge=document.createElement('small');badge.className='petSearchAdded';badge.textContent=fresh?'点一下取消':'已在自选中';label.append(badge)}
+      const badge=document.createElement('span');badge.className='petSearchAdded';badge.dataset.fresh=String(fresh);badge.textContent=added?(fresh?'点一下取消':'已在自选中'):'';
+      if(!added)badge.setAttribute('aria-hidden','true');
       row.disabled=!added&&petManagedAssets().length>=MAX_GROUP_ASSETS;
       // Keep the keyboard from shifting the tapped row before its click arrives.
       row.onpointerdown=e=>{if(e.isPrimary&&e.button===0)e.preventDefault()};
@@ -4023,7 +4141,7 @@ async function searchPetAssets(){
           showPetAlreadyAdded(row);return;
         }
         insertPetCard(item,row);
-      };row.append(logoFor({type:item.type||'swap',symbol:item.symbol},false,true),label);box.append(row);
+      };row.append(logoFor({type:item.type||'swap',symbol:item.symbol},false,true),label,badge);box.append(row);
     }
     if(!box.children.length){const note=document.createElement('p');note.textContent='没有匹配的标的';box.append(note)}
     box.hidden=false;
@@ -4054,8 +4172,9 @@ function renderDeckNeighbors(members){
 function deckNeighborReveal(dx,settling=false){
   // The card core projects out on the exposed side as the face turns inward.
   const card=$('deckCard'),width=card?.clientWidth||window.innerWidth||372;
-  // 牌芯随整个牌体移动，不再独立横移，避免滑动时冒出游离的边角。
-  card?.style?.setProperty('--deck-core-x','0px');
+  // Project the slab thickness on the exposed side, mirrored with the Y rotation.
+  const yaw=Math.max(-1,Math.min(1,dx/width))*26*Math.PI/180;
+  card?.style?.setProperty('--deck-core-x',(-14*Math.sin(yaw)).toFixed(3)+'px');
   // The opaque front card supplies the mask: every uncovered pixel is readable immediately.
   for(const [id,sign] of [['deckPrevious',1],['deckNext',-1]]){
     const layer=$(id);if(!layer)continue;
@@ -4224,12 +4343,11 @@ function buildDeckCard(){
     const column=document.createElement('i');column.className='deckProbabilityColumn';track.append(column);
     item.append(name,value,track);probabilities.append(item);
   }
-  const sampleNote=document.createElement('small');sampleNote.className='deckSampleNote';sampleNote.setAttribute('role','status');
-  ratio.append(ratioHead,cardPeriods,probabilities,sampleNote,ratioRow('long','↑','上行'),ratioRow('short','↓','下行'));
+  ratio.append(ratioHead,cardPeriods,probabilities,ratioRow('long','↑','上行'),ratioRow('short','↓','下行'));
   body.append(priceRow,sparkWrap,ratio);
   frame.append(art,title,body);
   card.append(frame);
-  if(!profiles[k])queueProfile(a);
+  if(!preview)prioritizeAssetDisplay(a);else if(!profiles[k])queueProfile(a);
   renderDeckPeriods(preview?cardPeriods:null);if(!preview)resetDeckAnalysis();deckEnsureRatio(a,k);
 }
 // 手机卡面与展开图表共享按标的、周期缓存的 K 线及桌面分析算法。
@@ -4287,7 +4405,7 @@ function deckEnsureRatio(a,k){
     deckRatioErrors[key]=Date.now()+15000;
     for(const card of [$('deckCard'),$('deckPrevious'),$('deckNext')]){
       const ratio=card?.querySelector('.deckRatio');
-      if(ratio?.dataset.key===k&&ratio.dataset.period===period){ratio.classList.remove('pending');const note=ratio.querySelector('.deckSampleNote');if(note)note.textContent='数据暂不可用，稍后自动重试'}
+      if(ratio?.dataset.key===k&&ratio.dataset.period===period){ratio.classList.remove('pending')}
     }
   }).finally(()=>deckRatioLoading.delete(key));
 }
@@ -4308,7 +4426,6 @@ function deckApplyRatio(k,pack){
   ratio.classList.remove('pending');
   ratio.querySelector('.deckRatioHead>span').textContent='方向概率 · '+deckPeriodName(pack.period);
   const percentages=deckPercentages(pack.probabilities);
-  const note=ratio.querySelector('.deckSampleNote');if(note)note.title=pack.callReason||'';if(note)note.textContent=percentages?'历史同类样本 '+(pack.samples||0)+' 组'+(pack.callReason?' · 等待确认':''):pack.barCount===undefined?'正在加载数据':'历史样本不足';
   const winner=percentages?percentages.indexOf(Math.max(...percentages)):-1;
   let columnIndex=0;
   for(const item of ratio.querySelectorAll('.deckProbability')){
@@ -4376,7 +4493,7 @@ function flipDeck(dir){
   window.MarketPhysics?.sound('card');
   const transition=++deckTransition;
   deckNeighborReveal(-dir*window.innerWidth);
-  card.style.transition='transform 300ms cubic-bezier(.22,.65,.25,1)';
+  card.style.transition='transform 420ms cubic-bezier(.28,.64,.3,1)';
   card.style.transform=deckSlideTransform(-dir*window.innerWidth);
   card.style.opacity='1';
   // 翻牌过半、肉眼已明确翻转时先同步进度数字，不等动画收尾。
@@ -4384,7 +4501,7 @@ function flipDeck(dir){
     if(transition!==deckTransition||$('petDeck').hidden)return;
     const ahead=deckMembers();
     if(ahead.length)$('deckCount').textContent=`${(petDeckIndex+dir+ahead.length)%ahead.length+1} / ${ahead.length}`;
-  },160);
+  },220);
   setTimeout(()=>{
     if(transition!==deckTransition||$('petDeck').hidden)return;
     const current=deckMembers();
@@ -4393,7 +4510,7 @@ function flipDeck(dir){
     // The revealed card already occupies its final position; replace it in place.
     card.style.transition='none';card.style.transform=deckSlideTransform(0);
     buildDeckCard();card.dataset.busy='';
-  },310);
+  },430);
 }
 // 复用原图表的绘制、周期与手势，只把对应节点临时放入手机卡组。
 const deckChartMoved=[];
@@ -4464,14 +4581,18 @@ function newsRecommendedAssets(){
     instrumentCatalog?.find(item=>item.symbol===symbol)||
     {type:'swap',symbol,name:STOCK_NAMES[symbol]?.[0]||symbol});
 }
+function createMobilePageLoading(){const node=document.createElement('div');node.className='mobilePageLoading';node.setAttribute('role','status');node.setAttribute('aria-live','polite');const icon=document.createElement('span');icon.className='mobileLoadingRing';icon.setAttribute('aria-hidden','true');const text=document.createElement('span');text.textContent='正在加载';node.append(icon,text);return node}
 function renderPetNews(rows,note=''){
   const list=$('petNewsList');list.replaceChildren();
+  if(!rows?.length&&note==='正在加载'){list.append(createMobilePageLoading());return}
   const valid=Array.isArray(rows)?rows.filter(item=>{try{return item.headline&&new URL(item.url).protocol==='https:'}catch{return false}}).slice(0,25):[];
   if(!valid.length){const p=document.createElement('p');p.className='petNewsEmpty';p.textContent=note||'暂无相关新闻';list.append(p);return}
-  for(const item of valid){const article=document.createElement('article');article.className='petNewsItem';
-    const link=document.createElement('a');link.href=item.url;link.target='_blank';link.rel='noopener noreferrer';link.textContent=item.headline;
-    const meta=document.createElement('small');meta.textContent=[item.source,Number(item.datetime)?date(Number(item.datetime)*1000):''].filter(Boolean).join(' · ');
-    article.append(meta,link);list.append(article)}
+  valid.forEach((item,index)=>{
+    const meta=[item.source,Number(item.datetime)?date(Number(item.datetime)*1000):''].filter(Boolean).join(' · ');
+    const summaryText=item.summary?new DOMParser().parseFromString(String(item.summary),'text/html').body.textContent.trim().slice(0,380):'';
+    const article=window.MarketNewsPaper.create(item,{index,meta,summaryText});
+    if(article){article.classList.add('petNewsItem');list.append(article)}
+  });
 }
 async function openPetNews(){
   if(!(window.MarketDevice?.isMobile?.()??window.innerWidth<=720))return;
@@ -4480,13 +4601,12 @@ async function openPetNews(){
     dialog.innerHTML='<header class="mobileSheetHead petNewsHead"><button id="petNewsBack" type="button" aria-label="返回"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 5 8.5 12 15.5 19"/></svg></button><strong id="petNewsTitle">新闻</strong><button id="petNewsSearchButton" type="button" aria-label="选择新闻标的"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></button></header><section id="petNewsPicker" class="petNewsPicker" hidden><form id="petNewsSearchForm"><input id="petNewsSearchInput" type="search" placeholder="搜索代码或名称" aria-label="搜索新闻标的" autocomplete="off"></form><div id="petNewsChoices" class="petNewsChoices"></div></section><div id="petNewsList" class="petNewsList"></div>';
     document.body.append(dialog);
     $('petNewsBack').onclick=()=>{
-      if(!$('petNewsPicker').hidden){hidePetNewsPicker();return}
-      if(window.MarketMobilePages?.back)window.MarketMobilePages.back();else dialog.close();
+      if(window.MarketMobilePages?.back)window.MarketMobilePages.back();else returnToPetHome();
     };
     $('petNewsSearchButton').onclick=()=>{
       $('petNewsPicker').hidden=false;$('petNewsList').hidden=true;
       $('petNewsTitle').textContent='选择标的';$('petNewsSearchButton').hidden=true;
-      $('petNewsSearchInput').value='';searchPetNewsAssets();$('petNewsSearchInput').focus();
+      $('petNewsSearchInput').value='';searchPetNewsAssets();$('petNewsSearchInput').focus({preventScroll:true});
       if(!instrumentCatalog)loadCatalog().then(()=>searchPetNewsAssets()).catch(()=>{});
     };
     $('petNewsSearchForm').onsubmit=e=>{e.preventDefault();searchPetNewsAssets()};
@@ -4527,8 +4647,8 @@ async function searchPetNewsAssets(){
       }
     }
     if(serial!==petNewsSearchSerial||$('petNewsPicker').hidden||!$('petNewsDialog').open)return;
-    if(!query){
-      const heading=document.createElement('p');heading.className='petNewsChoiceHeading';heading.textContent='热门推荐';box.append(heading);
+    if(!query||[...matches.values()].some(a=>a.matchType==='close'||a.matchType==='related')){
+      const heading=document.createElement('p');heading.className='petNewsChoiceHeading';heading.textContent=query?'可能想找':'热门推荐';box.append(heading);
     }
     for(const a of [...matches.values()].slice(0,30)){
       const button=document.createElement('button');button.type='button';button.className='petNewsChoice';
@@ -4603,6 +4723,7 @@ function openPetDeck(groupId,index=0){
   $('deckTitle').textContent=g.name;
   const card=$('deckCard');card.dataset.busy='';card.style.transform='';card.style.opacity='';
   $('petDeck').hidden=false;
+  document.body.classList.add('petDeckOpen');
   buildDeckCard();
   // 前后卡牌共享动画时钟，交接时保持同一浮动位置。
   requestAnimationFrame(()=>{
@@ -4623,6 +4744,7 @@ function closePetDeck(){
   deckTransition++;
   deckNeighborReveal(0);
   $('petDeck').hidden=true;petDeckGroup=null;
+  document.body.classList.remove('petDeckOpen');
   if(petDeckTimer){clearInterval(petDeckTimer);petDeckTimer=null}
 }
 function wireDeckStage(){
@@ -4630,7 +4752,8 @@ function wireDeckStage(){
   stage.addEventListener('pointerdown',e=>{
     if(deckChartMoved.length)return;
     if(e.target.closest('button,a,[role="button"]')||$('deckCard').dataset.busy||!e.isPrimary)return;
-    drag={id:e.pointerId,x:e.clientX,y:e.clientY,t:performance.now(),dx:0,axis:null};
+    const started=performance.now();
+    drag={id:e.pointerId,x:e.clientX,y:e.clientY,t:started,dx:0,axis:null,samples:[{x:0,t:started}]};
   });
   stage.addEventListener('pointermove',e=>{
     if(!drag||e.pointerId!==drag.id)return;
@@ -4639,19 +4762,26 @@ function wireDeckStage(){
       drag.axis=Math.abs(dx)>Math.abs(dy)?'x':'y';
       if(drag.axis==='x')try{stage.setPointerCapture(e.pointerId)}catch{}
     }
+    const stamp=performance.now();drag.samples.push({x:dx,t:stamp});
+    while(drag.samples.length>1&&drag.samples[0].t<stamp-120)drag.samples.shift();
     if(drag.axis!=='x')return;
     drag.dx=dx;
     $('deckCard').classList.add('deckDragging');
     const card=$('deckCard');card.style.transition='none';
-    card.style.transform=deckSlideTransform(dx);deckNeighborReveal(dx);
+    const resisted=dx*.82;card.style.transform=deckSlideTransform(resisted);deckNeighborReveal(resisted);
   });
-  const reset=()=>{const card=$('deckCard'),transition=++deckTransition;card.dataset.busy='1';card.style.transition='transform 280ms cubic-bezier(.2,.8,.2,1)';card.style.transform=deckSlideTransform(0);deckNeighborReveal(0,true);setTimeout(()=>{if(transition===deckTransition){deckNeighborReveal(0);card.dataset.busy=''}},290)};
+  const reset=()=>{const card=$('deckCard'),transition=++deckTransition;card.dataset.busy='1';card.style.transition='transform 360ms cubic-bezier(.22,.72,.25,1)';card.style.transform=deckSlideTransform(0);deckNeighborReveal(0,true);setTimeout(()=>{if(transition===deckTransition){deckNeighborReveal(0);card.dataset.busy=''}},370)};
   stage.addEventListener('pointerup',e=>{
     if(!drag||e.pointerId!==drag.id)return;
     const d=drag;drag=null;$('deckCard').classList.remove('deckDragging');
-    const elapsed=Math.max(1,performance.now()-d.t);
-    const threshold=Math.min(90,stage.clientWidth*.18);
-    if(d.axis==='x'&&(Math.abs(d.dx)>threshold||(Math.abs(d.dx)>24&&Math.abs(d.dx)/elapsed>.45)))flipDeck(d.dx<0?1:-1);
+    const released=performance.now(),first=d.samples[0],last=d.samples.at(-1);
+    const velocity=(last.x-first.x)/Math.max(1,last.t-first.t);
+    const previous=d.samples.at(-2)||first;
+    const threshold=Math.min(138,Math.max(84,stage.clientWidth*.32));
+    const flickDistance=Math.min(64,Math.max(44,stage.clientWidth*.16));
+    const flick=Math.abs(d.dx)>=flickDistance&&Math.abs(velocity)>=.65&&
+      Math.sign(velocity)===Math.sign(d.dx)&&Math.sign(last.x-previous.x)===Math.sign(d.dx)&&released-last.t<=80;
+    if(d.axis==='x'&&(Math.abs(d.dx)>threshold||flick))flipDeck(d.dx<0?1:-1);
     else reset();
   });
   stage.addEventListener('pointercancel',()=>{drag=null;$('deckCard').classList.remove('deckDragging');reset()});
@@ -4693,7 +4823,7 @@ function syncMobileReturnButtons(){
   }
 }
 function setupPetHome(){
-  window.MarketMobilePages?.setActions({openDeck:openPetDeck,closeDeck:closePetDeck,openChart:openDeckChart,closeChart:closeDeckChart,openManager:openPetManager,managerDraft:()=>petDraft,openSearch:()=>{const source=petDeckGroup||activeGroupId;openPetManager(source===HOT_GROUP_ID?'main':source);openPetAssetSearch()},closeManager:closePetManager});
+  window.MarketMobilePages?.setActions({goHome:returnToPetHome,openDeck:openPetDeck,closeDeck:closePetDeck,openChart:openDeckChart,closeChart:closeDeckChart,openManager:openPetManager,managerDraft:()=>petDraft,openSearch:()=>{const source=petDeckGroup||activeGroupId;openPetManager(source===HOT_GROUP_ID?'main':source);openPetAssetSearch()},closeManager:closePetManager});
   const classicBack=document.createElement('button');
   classicBack.type='button';classicBack.className='mobileClassicBack';classicBack.setAttribute('aria-label','返回');
   classicBack.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15.5 5 8.5 12 15.5 19"/></svg>';

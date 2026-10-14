@@ -1,5 +1,7 @@
 """Prevent a same-ticker coin from receiving another project's logo."""
-import unittest
+import unittest,tempfile
+from pathlib import Path
+from market_store import MarketStore
 from unittest.mock import patch
 
 import server
@@ -7,6 +9,8 @@ import server
 
 class LogoResolutionTests(unittest.TestCase):
     def setUp(self):
+        self.folder=tempfile.TemporaryDirectory();self.addCleanup(self.folder.cleanup)
+        self.store=MarketStore(Path(self.folder.name)/'isolated.sqlite3');patcher=patch.object(server,'market_store',return_value=self.store);patcher.start();self.addCleanup(patcher.stop)
         with server.CACHE_LOCK:
             for key in list(server.CACHE):
                 if key[0] in ("coin", "company", "logo"):

@@ -12,6 +12,7 @@
   if(mobileOnlyEntry&&!detectedPhone){portrait.width=Math.min(480,window.innerWidth);portrait.height=window.innerHeight}
   else if(phone&&window.innerWidth<=window.innerHeight){portrait.width=window.innerWidth;portrait.height=window.innerHeight}
   const viewport=()=>{
+    const pinned=window.MarketKeyboard?.lockedViewport?.();if(pinned)return pinned;
     // resize can arrive before orientation updates; never capture landscape width as portrait.
     const turned=window.innerWidth>window.innerHeight&&window.innerWidth>portrait.width*1.2;
     const view=window.visualViewport;
@@ -35,6 +36,9 @@
   document.addEventListener('fullscreenchange',()=>{portraitLocked=false;nextPortraitLockTry=0;if(document.fullscreenElement)tryPortraitLock()});
   document.addEventListener('visibilitychange',()=>{if(document.hidden){portraitLocked=false;nextPortraitLockTry=0}});
   const lockedSheets=new WeakSet(),phoneMediaRules=[];
+  // Cover browser controls from the first paint, without following keyboard/toolbar shrink.
+  const screenWallpaperHeight=screen.width<=720?Math.max(screen.height||0,screen.width||0):0;
+  let wallpaperHeight=Math.max(window.innerHeight,portrait.height,screenWallpaperHeight);
   function lockPhoneStyles(){
     if(!phone)return;
     const view=viewport(),typing=document.activeElement?.matches?.('input,textarea,select,[contenteditable="true"]');
@@ -58,9 +62,12 @@
         return matches?'(min-width:0px)':'(max-width:0px)';
       });
     }
-    root.style.setProperty('--phone-layout-width',portrait.width+'px');
-    root.style.setProperty('--phone-layout-height',portrait.height+'px');
-    root.style.setProperty('--mobile-viewport-height',portrait.height+'px');
+    const setViewportValue=(name,value)=>{if(root.style.getPropertyValue?.(name)!==value)root.style.setProperty(name,value)};
+    setViewportValue('--phone-layout-width',portrait.width+'px');
+    setViewportValue('--phone-layout-height',portrait.height+'px');
+    wallpaperHeight=Math.max(wallpaperHeight,window.innerHeight,view.height,portrait.height);
+    setViewportValue('--wallpaper-viewport-height',wallpaperHeight+'px');
+    setViewportValue('--mobile-viewport-height',portrait.height+'px');
   }
   document.addEventListener('load',e=>{if(e.target.matches?.('link[rel="stylesheet"],link[data-entry-style]'))lockPhoneStyles()},true);
   document.addEventListener('DOMContentLoaded',lockPhoneStyles);
@@ -68,6 +75,7 @@
   window.addEventListener('orientationchange',lockPhoneStyles,{passive:true});
   screen.orientation?.addEventListener?.('change',lockPhoneStyles);
   window.visualViewport?.addEventListener('resize',lockPhoneStyles,{passive:true});
+  window.visualViewport?.addEventListener('scroll',lockPhoneStyles,{passive:true});
   window.addEventListener('pageshow',lockPhoneStyles,{passive:true});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)lockPhoneStyles()});
   lockPhoneStyles();
@@ -85,56 +93,105 @@
   document.addEventListener('DOMContentLoaded',()=>{for(const link of document.querySelectorAll('link[data-entry-style]'))if(link.sheet)link.media='all';revealStyledPage();revealDesktop()});
   if(!root.hasAttribute('data-orbit-entry')||!isMobile())return;
   root.classList.add('bootLoading');
-  let value=6,target=18,accountReady=false,domReady=false,failed=false,finished=false,failureMessage='',visualReady=false,preparing=false,prepareVisuals=null;
+  let value=6,target=12,accountReady=false,domReady=false,failed=false,finished=false,failureMessage='',timedOut=false,visualReady=false,preparing=false,prepareVisuals=null;
+  let visualAttempts=0,failurePhase='',watchdog;
+  const resourceAttempts=new WeakMap(),scheduledResources=new WeakSet(),failedResources=new Set();
   const start=Date.now();
   const $=id=>document.getElementById(id);
   const stylesReady=entryStylesReady;
-  const steps=[];
-  function stage(message,detail){
+  const steps=[],entryListeners=[];
+  function fixedDetailLines(lines){
+    const visible=lines.slice(-6).map(line=>String(line).replace(/\s+/g,' ').trim());
+    return visible.concat(Array(6-visible.length).fill('')).join('\n');
+  }
+  function stage(message,detail,progress){
     if(finished)return;
-    if($('bootStatus'))$('bootStatus').textContent=message;
-    if(detail&&!steps.includes(detail)){steps.push(detail);if($('bootDetails'))$('bootDetails').textContent=steps.slice(-5).join('\n')}
+    if(Number.isFinite(progress))target=Math.max(target,Math.min(96,progress));
+    if($('bootStatus')&&$('bootStatus').textContent!==message)$('bootStatus').textContent=message;
+    if(detail&&!steps.includes(detail)){steps.push(detail);if($('bootDetails')){const completed=steps.filter(step=>step.startsWith('✓'));$('bootDetails').textContent=fixedDetailLines(completed.length?completed:steps.slice(-2))}}
   }
   function paint(){
     const fill=$('bootProgressFill'),bar=$('bootProgress');
     if(fill)fill.style.width=value+'%';if(bar)bar.setAttribute('aria-valuenow',String(Math.round(value)));
+    if($('bootPercent'))$('bootPercent').textContent=Math.round(value)+'%';
   }
   function finish(){
-    if(finished||failed||!accountReady||!domReady||!stylesReady())return;
+    if(finished||failed||failedResources.size||!accountReady||!domReady||!stylesReady())return;
     if(!visualReady&&prepareVisuals){
       if(preparing)return;preparing=true;
-      stage('正在准备首屏…','初始化首屏布局与个人形象');
-      Promise.resolve().then(prepareVisuals).then(()=>{
+      stage('正在准备启动资源…','初始化首屏布局、个人形象与交互音效',50);
+      let preparationTimer;
+      const deadline=new Promise((_,reject)=>{preparationTimer=setTimeout(()=>reject(new Error('启动资源等待超时')),45000)});
+      Promise.race([Promise.resolve().then(prepareVisuals),deadline]).then(()=>{
+        clearTimeout(preparationTimer);
         // Lay out the real page behind the still-opaque cover before exposing it.
         const shell=document.querySelector('[data-entry-shell]');if(shell)shell.hidden=false;
         const nextFrame=window.requestAnimationFrame||((fn)=>setTimeout(fn,0));
         // 资源就绪后等待布局绘制；后台页面等待恢复后再进入。
-        let revealed=false;const reveal=()=>{if(revealed)return;revealed=true;visualReady=true;preparing=false;failed=false;finish()};
+        let revealed=false;const reveal=()=>{if(revealed)return;revealed=true;visualReady=true;preparing=false;failed=false;stage('正在检查最终布局…','✓ 首屏布局与交互组件已就绪',96);finish()};
         nextFrame(()=>nextFrame(reveal));
-      }).catch(()=>{preparing=false;fail('画面尚未加载完整，请重新加载')});
+      }).catch(error=>{
+        clearTimeout(preparationTimer);
+        preparing=false;visualAttempts++;
+        const exhausted=visualAttempts>=3;
+        fail(exhausted?'启动资源多次加载失败，请重新加载':'正在重新准备启动资源…',{exhausted,phase:'visual'});
+        if(!exhausted)setTimeout(()=>{if(finished)return;failed=false;stage('正在重新准备启动资源…','自动重试启动资源 '+(visualAttempts+1)+'/3');finish()},2000*visualAttempts);
+      });
       return;
     }
-    finished=true;failed=false;clearInterval(tick);clearTimeout(watchdog);value=100;paint();
+    target=Math.max(target,96);
+    if(Date.now()-start<2800||value<95.5)return;
+    finished=true;failed=false;timedOut=false;if($('bootRetry'))$('bootRetry').hidden=true;clearInterval(tick);clearTimeout(watchdog);value=100;paint();
     if($('bootStatus'))$('bootStatus').textContent='首屏已就绪，即将进入';
-    if($('bootDetails'))$('bootDetails').textContent=steps.slice(-4).concat('✓ 首屏资源与布局准备完成').join('\n');
-    setTimeout(()=>{const shell=document.querySelector('[data-entry-shell]');if(shell)shell.hidden=false;root.classList.add('bootComplete');root.classList.remove('bootLoading');$('bootCover')?.setAttribute('hidden','');},700);
+    if($('bootDetails'))$('bootDetails').textContent=fixedDetailLines(steps.filter(step=>step.startsWith('✓')).slice(-5).concat('✓ 首屏资源与布局准备完成'));
+    setTimeout(()=>{const shell=document.querySelector('[data-entry-shell]');if(shell)shell.hidden=false;root.classList.add('bootComplete');root.classList.remove('bootLoading');$('bootCover')?.setAttribute('hidden','');for(const callback of entryListeners.splice(0)){try{callback()}catch{}}},700);
   }
-  function fail(message){
-    if(finished)return;failed=true;failureMessage=message||'连接有点慢，请重试';if($('bootStatus'))$('bootStatus').textContent=failureMessage;
-    if($('bootRetry'))$('bootRetry').hidden=false;
+  function fail(message,{exhausted=true,phase='account'}={}){
+    if(finished)return;failed=true;timedOut=exhausted;failurePhase=phase;failureMessage=message||'连接有点慢，正在重试';if($('bootStatus'))$('bootStatus').textContent=failureMessage;
+    if($('bootRetry'))$('bootRetry').hidden=!exhausted;
   }
-  const tick=setInterval(()=>{if(finished)return;if(!failed){target=Math.max(target,Math.min(90,22+68*(1-Math.exp(-(Date.now()-start)/9000))));value+=Math.max(.08,(target-value)*.08);value=Math.min(90,value);paint()}finish()},100);
-  const watchdog=setTimeout(()=>{if(!finished)stage(failed?failureMessage:'加载时间较长，仍在等待资源…','可点击下方重新加载，再试一次')},30000);
-  document.addEventListener('load',e=>{if(e.target.matches?.('link[data-entry-style]')){e.target.media='all';target=Math.max(target,55);stage('页面样式已加载','✓ 页面主题与移动布局样式已加载');finish()}},true);
-  document.addEventListener('error',e=>{if(e.target.matches?.('script[src*="/assets/app.js"],link[data-entry-style]'))fail('页面加载失败，请重试')},true);
+  function retryResource(node){
+    if(finished||scheduledResources.has(node))return;
+    failedResources.add(node);
+    const attempt=(resourceAttempts.get(node)||0)+1;
+    if(attempt>2){fail('页面资源多次加载失败，请重新加载',{phase:'resource'});return}
+    resourceAttempts.set(node,attempt);scheduledResources.add(node);
+    stage('正在重新请求页面资源…','自动重试页面资源 '+(attempt+1)+'/3');
+    setTimeout(()=>{
+      scheduledResources.delete(node);if(finished)return;
+      const source=node.href||node.src;if(!source)return;
+      const url=new URL(source,location.href);url.searchParams.set('boot_attempt',String(attempt));
+      if(node.tagName==='LINK'){node.href=url.href}
+      else if(node.tagName==='SCRIPT'){
+        const replacement=node.cloneNode(false);replacement.src=url.href;replacement.async=false;
+        resourceAttempts.set(replacement,attempt);failedResources.delete(node);failedResources.add(replacement);node.replaceWith(replacement);
+      }
+    },1500*attempt);
+  }
+  const tick=setInterval(()=>{if(finished)return;if(!failed){value=Math.min(target,value+Math.max(.2,(target-value)*.12));paint()}finish()},100);
+  function checkSlowResources(){
+    if(finished)return;
+    const waitingForResources=!accountReady||!domReady||!stylesReady()||(prepareVisuals&&!visualReady);
+    if(!waitingForResources)return;
+    for(const link of document.querySelectorAll('link[data-entry-style],link[data-entry-critical]'))if(!link.sheet)retryResource(link);
+    if(!timedOut)stage('正在等待启动资源…','连接较慢，正在自动恢复');
+    watchdog=setTimeout(checkSlowResources,15000);
+  }
+  watchdog=setTimeout(checkSlowResources,30000);
+  document.addEventListener('load',e=>{
+    failedResources.delete(e.target);
+    if(failurePhase==='resource'&&!failedResources.size&&stylesReady()){failed=false;timedOut=false;if($('bootRetry'))$('bootRetry').hidden=true}
+    if(e.target.matches?.('link[data-entry-style],link[data-entry-critical]')){e.target.media='all';stage('页面样式已加载','✓ 页面主题与移动布局样式已加载',40);finish()}
+  },true);
+  document.addEventListener('error',e=>{if(e.target.matches?.('script[defer][src],link[data-entry-style],link[data-entry-critical]')){failedResources.add(e.target);retryResource(e.target)}},true);
   document.addEventListener('DOMContentLoaded',()=>{
-    domReady=true;target=Math.max(target,72);stage('正在恢复账户与个人设置…','✓ 页面结构初始化完成');
+    domReady=true;stage('正在恢复账户与个人设置…','✓ 页面结构初始化完成',25);
     for(const link of document.querySelectorAll('link[data-entry-style]'))if(link.sheet)link.media='all';
-    if($('bootRetry')){$('bootRetry').onclick=()=>{ $('bootRetry').disabled=true;stage('正在重新加载…','重新请求页面和启动资源');location.reload()};$('bootRetry').hidden=false}
+    if($('bootRetry')){$('bootRetry').onclick=()=>{ $('bootRetry').disabled=true;stage('正在重新加载…','重新请求页面和启动资源');location.reload()};$('bootRetry').hidden=!timedOut}
     if(failed&&$('bootStatus'))$('bootStatus').textContent=failureMessage;
     paint();finish();
   });
-  window.MarketBoot={stage,ready(prepare){if(prepare)prepareVisuals=prepare;accountReady=true;failed=false;target=96;finish()},fail};
+  window.MarketBoot={stage,whenEntered(callback){if(root.classList.contains('bootComplete'))callback();else entryListeners.push(callback)},ready(prepare){if(prepare)prepareVisuals=prepare;accountReady=true;if(failurePhase!=='resource'||!failedResources.size){failed=false;timedOut=false;if($('bootRetry'))$('bootRetry').hidden=true}stage('账户已连接，正在准备资源…','✓ 账户服务与个人设置已恢复',50);finish()},fail};
 })();
 
 // Set the palette before the stylesheet paints, then build the mechanical
@@ -898,3 +955,45 @@ function startStationBackdrop(canvas) {
     });
   }
 }
+
+// Stable mobile keyboard overlay: no automatic page pan or focus after dismissal.
+function installMobileKeyboard(win=window,doc=document){
+  if(!win.MarketDevice?.isPhone?.())return null;
+  const editable=node=>node?.matches?.('textarea,input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="hidden"]):not([type="file"]):not([type="range"]):not([type="color"]),[contenteditable="true"]')&&!node.disabled&&!node.readOnly;
+  const rawView=()=>({width:win.visualViewport?.width||win.innerWidth,height:win.visualViewport?.height||win.innerHeight});
+  let pinned=null,dismissTimer=null,frame=null,pointer=null;
+  function release(){if(!pinned)return;pinned=null;doc.documentElement.dataset.keyboardOpen='false';win.clearTimeout(dismissTimer);dismissTimer=null;if(win.dispatchEvent&&win.Event)win.dispatchEvent(new win.Event('resize'))}
+  function restoreOpeningScroll(){
+    if(!pinned||pinned.manualScroll||Date.now()-pinned.started>650)return;
+    for(const row of pinned.surfaces){if(row.node.scrollTop!==row.top)row.node.scrollTop=row.top;if(row.node.scrollLeft!==row.left)row.node.scrollLeft=row.left}
+    if((win.scrollY||0)!==pinned.y||(win.scrollX||0)!==pinned.x)win.scrollTo(pinned.x,pinned.y);
+  }
+  function begin(node){
+    if(!editable(node))return;
+    if(!pinned){const view=win.MarketDevice.viewport?.()||rawView(),surfaces=[];for(let parent=node.parentElement;parent;parent=parent.parentElement)surfaces.push({node:parent,top:parent.scrollTop||0,left:parent.scrollLeft||0});pinned={width:view.width,rawWidth:rawView().width,height:view.height,x:win.scrollX||0,y:win.scrollY||0,surfaces,started:Date.now(),seen:false,manualScroll:false}}
+    doc.documentElement.dataset.keyboardOpen='true';win.clearTimeout(dismissTimer);dismissTimer=null;
+    if(win.requestAnimationFrame){if(frame)win.cancelAnimationFrame(frame);frame=win.requestAnimationFrame(()=>{frame=null;restoreOpeningScroll()})}
+  }
+  function observe(){
+    if(!pinned)return;const view=rawView();
+    if(Math.abs(view.width-pinned.rawWidth)>50){doc.activeElement?.blur?.();release();return}
+    if(pinned.height-view.height>150)pinned.seen=true;
+    restoreOpeningScroll();
+    if(pinned.seen&&view.height>=pinned.height-120){
+      if(dismissTimer)return;const owner=pinned;
+      // Safari can close its keyboard while leaving the input focused. Blur once;
+      // never re-focus it in viewport callbacks, so the down arrow stays effective.
+      dismissTimer=win.setTimeout(()=>{dismissTimer=null;if(pinned!==owner||rawView().height<owner.height-120)return;if(editable(doc.activeElement))doc.activeElement.blur();release()},120);
+    }
+  }
+  doc.addEventListener('focusin',event=>begin(event.target),true);
+  doc.addEventListener('focusout',()=>win.setTimeout(()=>{if(!pinned||editable(doc.activeElement))return;if(rawView().height>=pinned.height-120)release()},0),true);
+  doc.addEventListener('pointerdown',event=>{pointer={x:event.clientX,y:event.clientY};if(editable(event.target))begin(event.target);else if(pinned&&editable(doc.activeElement))doc.activeElement.blur()},true);
+  doc.addEventListener('pointermove',event=>{if(pinned&&pointer&&Math.hypot(event.clientX-pointer.x,event.clientY-pointer.y)>8)pinned.manualScroll=true},{passive:true});
+  doc.addEventListener('pointerup',()=>{pointer=null},{passive:true});
+  win.visualViewport?.addEventListener('resize',observe,{passive:true});win.visualViewport?.addEventListener('scroll',observe,{passive:true});win.addEventListener('resize',observe,{passive:true});win.addEventListener('scroll',restoreOpeningScroll,{passive:true});
+  doc.addEventListener('visibilitychange',()=>{if(doc.hidden){doc.activeElement?.blur?.();release()}});
+  const api={lockedViewport:()=>pinned?{width:pinned.width,height:pinned.height,offsetTop:0}:null,dismiss(){if(editable(doc.activeElement))doc.activeElement.blur();observe();if(pinned&&!pinned.seen)release()}};
+  win.MarketKeyboard=api;return api;
+}
+installMobileKeyboard();
