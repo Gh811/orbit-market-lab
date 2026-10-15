@@ -9,6 +9,11 @@ html[data-device="phone"] .ambientField{display:none!important}
 html.bootLoading{background:#091726;color:#f6ead6}
 html.bootLoading body{margin:0;overflow:hidden}
 html.bootLoading body>*:not(#bootCover){visibility:hidden!important}
+/* A child can override an ancestor's visibility. Guard every painted child
+   while preserving layout measurements behind the loading cover. */
+html[data-orbit-entry]:not(.bootComplete) body>:not(#bootCover),
+html[data-orbit-entry]:not(.bootComplete) body>:not(#bootCover) *{visibility:hidden!important;pointer-events:none!important}
+html.bootComplete #bootCover{display:none!important}
 html.bootLoading dialog::backdrop{background:transparent!important;visibility:hidden!important;backdrop-filter:none!important}
 html.bootLoading #bootCover{display:flex}
 .bootCover{position:fixed;inset:0;z-index:2147483000;box-sizing:border-box;min-height:100dvh;padding:calc(env(safe-area-inset-top) + 34px) 28px calc(env(safe-area-inset-bottom) + 34px);flex-direction:column;align-items:center;justify-content:center;overflow:hidden;background:radial-gradient(ellipse at 50% 32%,#203f53 0,#102335 43%,#09131f 83%);font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;color:#f6ead6;text-align:center}
@@ -86,7 +91,7 @@ html.bootLoading #bootCover{display:flex}
 /* Phone canvas retains its portrait dimensions when the device rotates.
    contain:paint keeps fixed panels inside this portrait canvas like the old
    transform did, without the phantom scroll area a transformed body creates. */
-html[data-device="phone"] body{position:relative;width:var(--phone-layout-width);height:var(--phone-layout-height);contain:paint}
+html[data-device="phone"] body{position:relative;width:var(--phone-layout-width);height:var(--phone-layout-height);contain:none}
 
 /* 宁静水晶星云启动页；插画载入前保留同色渐变底。 */
 .bootCover{background-color:#263c58;background-image:linear-gradient(180deg,#162c4666,#1c355477),url('/assets/icons/crypto/crystalbg.png?v=20261012-crystal43');background-size:cover;background-position:center;color:#f2f6fb}
@@ -177,10 +182,17 @@ html[data-device="phone"] dialog.detailDialog{height:var(--phone-layout-height);
 /* Background height is independent of the live content viewport. The root canvas
    also paints during toolbar/keyboard transitions and native overscroll. */
 html[data-device="phone"]{isolation:isolate;height:100%;overflow:hidden;overscroll-behavior:none;background-color:#263c58;background-image:linear-gradient(180deg,#162c4666,#1c355477),url('/assets/icons/crypto/crystalbg.png?v=20261012-crystal43');background-repeat:no-repeat;background-position:center -96px;background-size:calc(100% + 128px) calc(var(--wallpaper-viewport-height,100%) + 256px);background-attachment:scroll}
-html[data-device="phone"]::before{content:"";display:block;position:fixed;top:-96px;left:-64px;right:-64px;bottom:auto;width:auto;height:calc(var(--wallpaper-viewport-height,100%) + 256px);min-height:0;z-index:-1;pointer-events:none;background:linear-gradient(180deg,#162c4666,#1c355477),url('/assets/icons/crypto/crystalbg.png?v=20261012-crystal43') center/cover no-repeat #263c58;transform:translateZ(0)}
-html[data-device="phone"] body{background:transparent!important}
+html[data-device="phone"]::before{content:"";display:block;position:fixed;top:-96px;left:-64px;right:-64px;bottom:auto;width:auto;height:calc(var(--wallpaper-viewport-height,100%) + 256px);min-height:calc(100% + 256px);z-index:0;pointer-events:none;background:linear-gradient(180deg,#162c4666,#1c355477),url('/assets/icons/crypto/crystalbg.png?v=20261012-crystal43') center/cover no-repeat #263c58;transform:none}
+html[data-device="phone"] body{z-index:1;background:transparent!important}
 html[data-device="phone"] body::before,html[data-device="phone"] body::after{display:none!important}
 html[data-device="phone"] :is(#petHome,#petDeck,#petManager){background:transparent}
-html[data-device="phone"] :is(.bootCover,#authDialog,#mobilePasswordPage),html[data-device="phone"] :is(dialog.detailDialog,dialog.mobileSheet)::backdrop{background-color:#263c58;background-image:linear-gradient(180deg,#162c4666,#1c355477),url('/assets/icons/crypto/crystalbg.png?v=20261012-crystal43');background-position:center -96px;background-size:calc(100% + 128px) calc(var(--wallpaper-viewport-height,100%) + 256px);background-repeat:no-repeat;backdrop-filter:none;-webkit-backdrop-filter:none}
+html[data-device="phone"][data-orbit-entry] :is(.bootCover,#authDialog,#mobilePasswordPage),html[data-device="phone"][data-orbit-entry] :is(dialog.detailDialog,dialog.mobileSheet,#authDialog,#mobilePasswordPage)::backdrop{background-color:#263c58;background-image:linear-gradient(180deg,#162c4666,#1c355477),url('/assets/icons/crypto/crystalbg.png?v=20261012-crystal43');background-position:center -96px;background-size:calc(100% + 128px) calc(var(--wallpaper-viewport-height,100%) + 256px);background-repeat:no-repeat;backdrop-filter:none;-webkit-backdrop-filter:none}
 
 html[data-device="phone"] body.petManagerOpen :is(#petHome,#petDeck){visibility:hidden;pointer-events:none}
+
+/* Do not make body a paint-containment boundary: Safari can otherwise clip
+   fixed full-screen surfaces to the old keyboard/toolbar viewport. */
+html[data-device="phone"] body{contain:none;overflow:hidden}
+html[data-device="phone"] :is(dialog.detailDialog,dialog.mobileSheet)::backdrop{position:fixed;inset:-256px;min-height:calc(var(--wallpaper-viewport-height,100%) + 512px)}
+html.orbitAndroid[data-device="phone"]{--ui-safe-top:0px;--ui-safe-bottom:0px}
+#clientUpdateNotice{position:fixed;bottom:calc(var(--ui-safe-bottom,0px) + 14px);left:50%;transform:translateX(-50%);z-index:10000;max-width:calc(100% - 32px);padding:12px 18px;border:1px solid #d6bc7a88;border-radius:24px;background:#162738;color:#e8d6ab;box-shadow:0 8px 22px #0006;font-size:13px}

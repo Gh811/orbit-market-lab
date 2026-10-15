@@ -25,7 +25,7 @@ m.timeouts.find(t=>t.ms===700).f();assert.ok(!m.classes.has('bootLoading'));asse
 const slow=run();slow.emit('DOMContentLoaded');slow.link.sheet={};for(let i=0;i<100;i++)slow.intervals[0]();assert.ok(Number(slow.nodes.bootProgress.attributes['aria-valuenow'])<=90,'loading never promises completion before account ready');
 slow.ctx.window.MarketBoot.fail('连接失败');assert.equal(slow.nodes.bootStatus.textContent,'连接失败');assert.equal(slow.nodes.bootRetry.hidden,false);slow.nodes.bootRetry.onclick();assert.equal(slow.ctx.reloaded,true);
 slow.ctx.window.MarketBoot.ready();slow.settle();assert.equal(slow.nodes.bootProgress.attributes['aria-valuenow'],'100','successful retry can complete');
-const desktop=run({phone:false,width:1440});assert.ok(desktop.ctx.window.MarketBoot);assert.ok(desktop.classes.has('bootLoading'));assert.equal(desktop.ctx.window.MarketDevice.isMobile(),true,'main entry has no desktop branch');assert.equal(desktop.ctx.window.MarketDevice.viewport().width,480,'wide window gets bounded mobile canvas');desktop.link.sheet={};desktop.emit('load',{target:desktop.link});assert.equal(desktop.link.media,'all');
+const desktop=run({phone:false,width:1440});assert.ok(desktop.ctx.window.MarketBoot);assert.ok(desktop.classes.has('bootLoading'));assert.equal(desktop.ctx.window.MarketDevice.isMobile(),true,'main entry has no desktop branch');assert.equal(desktop.ctx.window.MarketDevice.viewport().width,1440,'wide window uses its available width');desktop.link.sheet={};desktop.emit('load',{target:desktop.link});assert.equal(desktop.link.media,'all');
 const outsideEntry=run({phone:false,entry:false,width:1440});assert.equal(outsideEntry.ctx.window.MarketBoot,undefined,'unrelated pages retain their mode');
 const landscapeStart=run({width:844,orientation:90});assert.equal(landscapeStart.ctx.window.MarketDevice.viewport().width,390);assert.ok(landscapeStart.classes.has('bootLoading'));
 assert.equal(landscapeStart.ctx.window.MarketDevice.viewport().width,390);
@@ -36,7 +36,7 @@ const transientAccount=run();transientAccount.emit('DOMContentLoaded');transient
 const earlyFailure=run();earlyFailure.ctx.window.MarketBoot.fail('样式失败');earlyFailure.emit('DOMContentLoaded');assert.equal(earlyFailure.nodes.bootRetry.hidden,false,'DOMContentLoaded preserves an earlier failure');
 const readyRetry=run();readyRetry.emit('DOMContentLoaded');readyRetry.link.sheet={};readyRetry.ctx.window.MarketBoot.ready();readyRetry.timeouts.find(t=>t.ms===30000).f();assert.equal(readyRetry.nodes.bootRetry.hidden,true,'ready resources do not show timeout merely while progress settles');
 assert.match(fs.readFileSync(require('node:path').join(__dirname,'../index.html'),'utf8'),/<button id="bootRetry"[^>]* hidden>/,'retry hidden from first HTML paint');
-console.log('Mobile entry: main entry always mobile, wide canvas bounded, portrait/keyboard distinction, readiness gates and failure/retry PASS');
+console.log('Mobile entry: main entry always mobile, wide canvas follows available width, portrait/keyboard distinction, readiness gates and failure/retry PASS');
 (async()=>{
  const gate=run();gate.emit('DOMContentLoaded');gate.link.sheet={};let release;
  gate.ctx.window.MarketBoot.ready(()=>new Promise(resolve=>release=resolve));await Promise.resolve();

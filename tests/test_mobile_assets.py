@@ -45,6 +45,13 @@ class MobileAssetTests(unittest.TestCase):
         self.assertIn(b'<svg', body)
         self.assertIn(b'#e7d3a8', body)
 
+    def test_android_download_page_and_client_update_assets_are_public(self):
+        for path,mime_part in [('/download','html'),('/assets/download.css','css'),('/assets/client-update.js','javascript')]:
+            status,body,mime=self.request(path)
+            self.assertEqual(status,200)
+            self.assertIn(mime_part,mime)
+            self.assertTrue(body)
+
     def test_unlisted_files_remain_private(self):
         for path in ['/assets/pets/../../server.py', '/.market_accounts.sqlite3', '/assets/pets/missing.png']:
             with self.subTest(path=path):

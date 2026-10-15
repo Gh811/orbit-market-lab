@@ -35,3 +35,9 @@ backtest/results/
 # Generated local database inventory reports; regenerate for current counts.
 /数据完整性报告.txt
 /数据库标的清单.txt
+
+# Android build output and release signing material stay private.
+android/build/
+*.jks
+*.keystore
+*.apk

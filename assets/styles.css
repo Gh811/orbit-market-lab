@@ -4693,3 +4693,26 @@ html[data-device="phone"] #authDialog:not(.mobilePasswordView):has(#authSigned:n
 #petNewsDialog:has(#petNewsList>.mobilePageLoading) .petNewsHead{flex:none;border-bottom:1px solid transparent}
 #petNewsDialog #petNewsList:has(>.mobilePageLoading){position:relative;flex:1;min-height:0;padding:0;margin:0 0 var(--ui-safe-bottom,env(safe-area-inset-bottom,0px))}
 #petNewsDialog #petNewsList>.mobilePageLoading{position:absolute;inset:0;min-height:0;z-index:1}
+
+.deckPriceStrong .deckPriceSource{display:block;margin-top:2px;font-size:10px;font-weight:400;line-height:1.3;letter-spacing:0;color:var(--muted,#a9bbc8)}
+
+/* The touch application keeps its mobile shell while expanding for tablets. */
+@media(min-width:760px){
+ html[data-device="phone"] #petHome .petStage{padding-left:clamp(24px,5vw,64px);padding-right:clamp(24px,5vw,64px)}
+ html[data-device="phone"] #petHome .petActor{max-width:var(--pet-actor-limit,240px)}
+ html[data-device="phone"] #petHome .petSlot.empty .petIsland{max-width:160px;height:120px}
+ html[data-device="phone"] #petHome .petName{font-size:17px}
+ html[data-device="phone"] #petDeck .deckCard{width:calc(100% - 96px);max-width:880px}
+ html[data-device="phone"] #petDeck .deckNeighbor{width:calc(100% - 96px);max-width:880px}
+ html[data-device="phone"] #petDeck .deckFrame{padding:clamp(20px,3vw,34px);gap:14px}
+ html[data-device="phone"] #petDeck .deckTitleRow>strong{font-size:24px}
+ html[data-device="phone"] #petDeck .deckPriceStrong{font-size:36px}
+ html[data-device="phone"] #petDeck .deckLogo{width:96px;height:96px}
+}
+
+/* Companion displays keep the chamber above its plaque on tablets too. */
+@media(min-width:600px){
+ html[data-device="phone"] #petWorldDialog .petWorldBody{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;align-items:stretch}
+ html[data-device="phone"] #petWorldDialog .petWorldExhibit{height:auto;max-height:none}
+ html[data-device="phone"] #petWorldDialog .petWorldInfo{max-width:680px}
+}

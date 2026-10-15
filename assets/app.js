@@ -3594,8 +3594,10 @@ function syncPetSlotSpacing(stage){
  const box=stage.getBoundingClientRect();if(!box.height||!box.width)return;
  const style=getComputedStyle(stage),available=box.height-parseFloat(style.paddingTop||0)-parseFloat(style.paddingBottom||0);
  const contentWidth=box.width-parseFloat(style.paddingLeft||0)-parseFloat(style.paddingRight||0),slotWidth=(contentWidth-16)/3;
- const actorSize=Math.min(slotWidth-4,Math.max(104,Math.min(160,box.width*.32)));
  const gap=16,rowHeight=Math.max(0,(available-gap)/2);
+ const actorLimit=box.width>=760?Math.min(240,Math.max(104,rowHeight-88)):160;
+ stage.style.setProperty('--pet-actor-limit',actorLimit.toFixed(2)+'px');
+ const actorSize=Math.min(slotWidth-4,Math.max(104,Math.min(actorLimit,box.width*.32)));
  // Bring the second row close to the first without reducing the larger artwork.
  const desiredDistance=actorSize*1.25+74;
  const lift=Math.min(160,Math.max(0,rowHeight+gap-desiredDistance),Math.max(0,rowHeight-actorSize-88));
@@ -4306,10 +4308,10 @@ function buildDeckCard(){
   title.append(sym,sub);
   const body=document.createElement('div');body.className='deckBody';
   const priceRow=document.createElement('div');priceRow.className='deckPriceRow';
-  const price=document.createElement('strong');price.className='deckPriceStrong';price.textContent=fmt(q?.p,a);
+  const price=document.createElement('strong');price.className='deckPriceStrong';
   const pctEl=document.createElement('span');pctEl.className='deckPct '+(pct==null?'':pct>=0?'up':'down');
   pctEl.textContent=pct==null?'—':(pct>0?'+':'')+pct.toFixed(2)+'%';
-  priceRow.append(price,pctEl);
+  priceRow.append(price,pctEl);renderDeckPrice(a,cardPeriod,price);
   // 迷你 K 线与分析共用所选周期。
   const sparkWrap=document.createElement('div');sparkWrap.className='deckSparkWrap';
   const spark=document.createElement('canvas');spark.className='deckSpark';spark.dataset.key=k;spark.dataset.period=cardPeriod;
@@ -4435,6 +4437,8 @@ function deckApplyRatio(k,pack){
     item.classList.toggle('active',columnIndex===winner);item.classList.toggle('unknown',!percentages);columnIndex++;
   }
   const canvas=card.querySelector('.deckSpark');
+  const priceAsset=assets.find(a=>assetId(a)===k);
+  if(priceAsset)renderDeckPrice(priceAsset,pack.period,card.querySelector('.deckPriceStrong'),pack.sparkRows);
   if(canvas&&pack.sparkRows?.length){if(canvas.dataset.period!==pack.period)canvas.dataset.sparkOffset='0';canvas.dataset.period=pack.period;canvas._sparkRows=deckLiveSparkRows(pack.sparkRows,k,pack.period);miniChart(canvas,canvas._sparkRows,Number(canvas.dataset.sparkOffset)||0);canvas.classList.add('ready')}
   const setRow=(cls,val,plan)=>{
     const row=ratio.querySelector('.deckRatioRow.'+cls);if(!row)return;
@@ -4469,6 +4473,20 @@ function deckApplyRatio(k,pack){
   }
 }
 
+// Keep a loaded card useful while the independent quote request is pending.
+function renderDeckPrice(a,period,node,rows){
+  if(!node)return;
+  const q=quotes[assetId(a)],live=Number.isFinite(q?.p)&&q.p>0;
+  const bars=rows?.length?rows:timeframeCache.get(assetId(a)+'|'+period)?.rows;
+  const close=bars?.at(-1)?.c;
+  const value=live?q.p:Number.isFinite(close)&&close>0?close:null;
+  const text=fmt(value,a),source=live?'':value!==null?'K 线收盘价':'';
+  if(node.dataset.priceValue===text&&node.dataset.priceSource===source)return;
+  node.dataset.priceValue=text;node.dataset.priceSource=source;
+  node.textContent=text;node.title=source|| (live?'最新报价':'等待价格数据');
+  if(source){const label=document.createElement('small');label.className='deckPriceSource';label.textContent=source;node.append(label)}
+}
+
 function updateDeckLive(){
   if($('petDeck').hidden||!petDeckGroup)return;
   const members=deckMembers();if(!members.length)return;
@@ -4476,8 +4494,8 @@ function updateDeckLive(){
   const a=members[(petDeckIndex+offset+members.length)%members.length],card=$(id);if(!card)continue;
   const k=assetId(a),q=quotes[k];
   const price=card.querySelector('.deckPriceStrong'),pct=card.querySelector('.deckPct');
-  if(price){const next=fmt(q?.p,a);if(price.textContent!==next){price.textContent=next;
-    if(price.animate&&!window.matchMedia('(prefers-reduced-motion: reduce)').matches)price.animate([{opacity:.55},{opacity:1}],{duration:380})}}
+  const period=effectivePeriod(a,deckMobileTf),spark=card.querySelector('.deckSpark');
+  renderDeckPrice(a,period,price,spark?.dataset.period===period?spark._sparkRows:null);
   if(pct){const ch=q&&q.base?(q.p/q.base-1)*100:null;
     pct.textContent=ch==null?'—':(ch>0?'+':'')+ch.toFixed(2)+'%';
     pct.className='deckPct '+(ch==null?'':ch>=0?'up':'down')}

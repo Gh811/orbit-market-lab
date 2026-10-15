@@ -2,7 +2,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('nod
 const s=fs.readFileSync(require('node:path').join(__dirname,'../assets/theme.js'),'utf8');
 assert.equal(JSON.parse(fs.readFileSync(require('node:path').join(__dirname,'../assets/site.webmanifest'),'utf8')).orientation,'portrait-primary');
 const snippet=s.slice(s.indexOf('  let portraitLockPending='),s.indexOf('  const lockedSheets='));
-function setup(lock,phone=true){const handlers={},c={phone,screen:{orientation:lock?{lock}:{}},document:{hidden:false,addEventListener(n,f){handlers[n]=f}},Date:{now:()=>c.now},now:1000};vm.createContext(c);vm.runInContext(snippet,c);return {c,handlers}}
+function setup(lock,phone=true){const handlers={},c={phone,detectedPhone:phone,screen:{orientation:lock?{lock}:{}},document:{hidden:false,addEventListener(n,f){handlers[n]=f}},Date:{now:()=>c.now},now:1000};vm.createContext(c);vm.runInContext(snippet,c);return {c,handlers}}
 const flush=()=>new Promise(setImmediate);
 (async()=>{
  let calls=0,arg,resolve;

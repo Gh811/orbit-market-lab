@@ -1,23 +1,28 @@
 """One selected strategy; the server owns the complete BTC/ETH research plan."""
 import json
 import threading
+import os
 from pathlib import Path
 from .config import PRESETS,options
 from .validation import validated_record,validated_published_record,configuration_hash,rules_hash
 from .server import load,calculate,INTERVALS
 
 _PUBLICATION_LOCK=threading.Lock()
+def evaluations_path():
+    return Path(os.environ.get('MARKET_RESEARCH_EVALUATIONS',str(Path(__file__).parent/'validated-evaluations.json')))
+
 def update_validated_record(result):
     keys=('strategy','symbol','tf','strategyHash','configurationHash','plan','testFrom','to','summary','config')
     snapshot={key:result[key] for key in keys}
-    path=Path(__file__).parent/'validated-evaluations.json'
+    path=evaluations_path()
     with _PUBLICATION_LOCK:
+        path.parent.mkdir(parents=True,exist_ok=True)
         rows=json.loads(path.read_text()) if path.exists() else []
         rows=[r for r in rows if (r.get('strategy'),r.get('symbol'),r.get('tf'))!=(snapshot['strategy'],snapshot['symbol'],snapshot['tf'])]
         rows.append(snapshot);temp=path.with_suffix('.tmp');temp.write_text(json.dumps(rows,ensure_ascii=False,indent=2));temp.replace(path)
 
 def active_strategies():
-    file=Path(__file__).parent/'validated-evaluations.json'
+    file=evaluations_path()
     data=json.loads(file.read_text()) if file.exists() else []
     names={s['value']:s for s in PRESETS['strategies']}
     result=[]

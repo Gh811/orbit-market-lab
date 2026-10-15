@@ -1471,6 +1471,14 @@ def accounts():
 
 
 class Handler(BaseHTTPRequestHandler):
+    def handle(self):
+        # A phone can cancel a request when navigating or losing connectivity.
+        # This ends only that connection; do not emit a server-error traceback.
+        try:
+            super().handle()
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+            self.close_connection = True
+
     def log_message(self, format, *args):
         # Do not log token-bearing upstream headers or URL values.
         print("[market]", self.address_string(), format % args)
@@ -1637,6 +1645,14 @@ class Handler(BaseHTTPRequestHandler):
                                '<p>请返回星轨重新登录，系统会生成新的页面 ID。</p>'
                                '<a style="color:#eac06e" href="/">返回星轨</a></body></html>')
                     return self.respond(410, message.encode("utf-8"), "text/html; charset=utf-8")
+        if path.path in ("/downloads/orbit.apk", "/downloads/orbit.apk.sha256"):
+            apk=Path(os.environ.get("MARKET_APK_FILE",str(ROOT/".local-data/android/orbit.apk")))
+            if not apk.is_file():return self.respond(404,{"error":"安卓包暂未发布"})
+            if path.path.endswith(".sha256"):
+                return self.respond(200,(hashlib.sha256(apk.read_bytes()).hexdigest()+"  orbit.apk\n").encode(),"text/plain; charset=utf-8")
+            return self.respond(200,apk.read_bytes(),"application/vnd.android.package-archive")
+        if path.path in ("/download","/download.html"):
+            return self.respond(200,version_html((ROOT/"download.html").read_bytes(),ROOT,"/download.html"),"text/html; charset=utf-8")
         research_files = {"/backtest/": ("index.html", "text/html"), "/backtest/index.html": ("index.html", "text/html"), "/backtest/app.js": ("app.js", "text/javascript"), "/backtest/style.css": ("style.css", "text/css")}
         if path.path in research_files:
             name, mime = research_files[path.path]
@@ -1658,7 +1674,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.respond(200, asset.read_bytes(), "image/png", cache_seconds=86400)
         if path.path == "/assets/pets/mascots-3d-v1.png":
             return self.respond(200, (ROOT / "assets/pets/mascots-3d-v1.png").read_bytes(), "image/png", cache_seconds=86400)
-        if path.path in ("/assets/data.js", "/assets/news-paper.js", "/assets/news-paper.css", "/assets/mobile-pages.js", "/assets/mobile-pages.css", "/assets/wallet.js", "/assets/wallet.css", "/assets/pets/personal-navigator-v1.png"):
+        if path.path in ("/assets/data.js", "/assets/news-paper.js", "/assets/news-paper.css", "/assets/mobile-pages.js", "/assets/mobile-pages.css", "/assets/wallet.js", "/assets/wallet.css", "/assets/client-update.js", "/assets/download.css", "/assets/pets/personal-navigator-v1.png"):
             asset = ROOT / path.path.lstrip("/")
             if asset.is_file():
                 mime = {".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".png": "image/png"}[asset.suffix]

@@ -105,7 +105,16 @@ def clean_state(raw):
         if not isinstance(identity,str) or not re.fullmatch(r"[a-zA-Z0-9-]{1,64}",identity) or identity in wallet_ids:continue
         if any(type(value) not in (int,float) or not math.isfinite(value) or not 0<value<1e12 for value in (quantity,price)):continue
         if row.get("currency") not in ("CNY","USD","USDT") or row.get("category") not in ("crypto","stock","fund","other"):continue
-        wallet.append({"id":identity,"name":name.strip(),"quantity":quantity,"price":price,"currency":row["currency"],"category":row["category"]})
+        holding={"id":identity,"name":name.strip(),"quantity":quantity,"price":price,"currency":row["currency"],"category":row["category"]}
+        if row.get("assetType") in ("swap","ashare") and isinstance(row.get("symbol"),str) and re.fullmatch(r"[A-Z0-9]{1,15}",row["symbol"]):
+            holding.update(symbol=row["symbol"],assetType=row["assetType"])
+        acquired=row.get("acquiredAt")
+        if isinstance(acquired,str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}",acquired):
+            try:
+                from datetime import date
+                if date.fromisoformat(acquired)<=date.today():holding["acquiredAt"]=acquired
+            except ValueError:pass
+        wallet.append(holding)
         wallet_ids.add(identity)
     return {"assets": assets, "groups": groups, "activeGroup": active_group, "selected": selected,
             "tf": timeframe if isinstance(timeframe, str) and timeframe in TIMEFRAMES else "1d",

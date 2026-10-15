@@ -73,8 +73,8 @@ body.authLocked #petAccountButton,
 body.accountOverlay #petAccountButton{display:none!important;visibility:hidden;pointer-events:none}
 #petHome .petHelmetExhaust{position:absolute;left:23px;top:59px;width:10px;height:23px;pointer-events:none;opacity:0;transform-origin:50% 0;border-radius:30% 30% 65% 65%;background:radial-gradient(ellipse at 50% 5%,#fff8d5 0 12%,#a9f9ff 28%,#48cee9 48%,#eead65 65%,transparent 78%);filter:drop-shadow(0 0 3px #62deee);animation:none}
 #petHome .petAccountHelmet{animation:none}
-@keyframes petCapsuleExhaust{0%,70%,80%,100%{opacity:0;transform:scale(.5,.15)}71%{opacity:.65;transform:scale(.8,.55)}72%{opacity:1;transform:scale(1,1)}73%{opacity:.8;transform:scale(.85,.7)}74%{opacity:1;transform:scale(1.15,1.2)}75%{opacity:.9;transform:scale(.9,.9)}77%{opacity:.7;transform:scale(.8,.6)}79%{opacity:0;transform:scale(.5,.15)}}
-@keyframes petCapsuleLaunch{0%,70%,80%,100%{transform:translateY(0)}72%{transform:translateY(-1px)}75%{transform:translateY(-3px)}78%{transform:translateY(-1px)}}
+@keyframes petCapsuleExhaust{0%,20%,90%,100%{opacity:0;transform:scale(.5,.15)}25%{opacity:.65;transform:scale(.8,.55)}35%{opacity:1;transform:scale(1,1)}45%{opacity:.8;transform:scale(.85,.8)}55%{opacity:1;transform:scale(1.15,1.2)}65%{opacity:.9;transform:scale(.9,.9)}78%{opacity:.7;transform:scale(.8,.6)}88%{opacity:0;transform:scale(.5,.15)}}
+@keyframes petCapsuleLaunch{0%,25%,95%,100%{transform:translateY(0)}35%{transform:translateY(-1px)}48%,66%{transform:translateY(-4px)}80%{transform:translateY(-2px)}}
 /* A physical dome lamp sits in the metal socket below the cabin window. */
 #petHome .petHeadRight .petHeadAccount #petStatus{--capsule-lamp:#ffd17a;width:10px;height:10px;bottom:10px;border:1px solid #adc6d3;background:radial-gradient(circle at 32% 25%,#fff 0 9%,#fff5dd 12%,var(--capsule-lamp) 42%,color-mix(in srgb,var(--capsule-lamp) 50%,#193041) 80%);box-shadow:0 0 0 2px #243e50,inset -1px -1px 2px #14233180,0 0 7px 2px color-mix(in srgb,var(--capsule-lamp) 65%,transparent),0 0 15px 4px color-mix(in srgb,var(--capsule-lamp) 25%,transparent);overflow:visible}
 #petHome .petHeadRight .petHeadAccount #petStatus.ok{--capsule-lamp:#8fffd2}
@@ -82,10 +82,11 @@ body.accountOverlay #petAccountButton{display:none!important;visibility:hidden;p
 #petHome .petHeadRight .petHeadAccount #petStatus.bad{--capsule-lamp:#ff9696}
 #petHome .petHeadRight .petHeadAccount #petStatus:before{display:none}
 /* Retracting steel doors close before ignition and reopen only after landing. */
-#petHome .petHelmetVisor:before,#petHome .petHelmetVisor:after{content:"";position:absolute;top:0;bottom:0;width:50%;z-index:2;pointer-events:none;box-sizing:border-box;border:1px solid #d3e6ee;background:repeating-linear-gradient(0deg,transparent 0 8px,#20374630 8px 9px),linear-gradient(105deg,#536e80,#d9e4e9 28%,#91a8b6 55%,#425c70);box-shadow:inset 0 1px 2px #f3fcff90,inset 0 -2px 3px #1c304d80;transform:translateX(var(--door-open));animation:none}
-#petHome .petHelmetVisor:before{left:0;--door-open:-105%;border-radius:18px 0 0 18px}
-#petHome .petHelmetVisor:after{right:0;--door-open:105%;border-radius:0 18px 18px 0}
-@keyframes petCapsuleDoor{0%,65%,85%,100%{transform:translateX(var(--door-open))}69%,81%{transform:translateX(0)}}
+/* Both leaves share one full-aperture finish; overlap seals subpixel gaps. */
+#petHome .petHelmetVisor:before,#petHome .petHelmetVisor:after{content:"";position:absolute;top:0;bottom:0;width:calc(50% + .5px);z-index:2;pointer-events:none;box-sizing:border-box;border:0;background:repeating-linear-gradient(0deg,transparent 0 8px,#20374620 8px 9px),linear-gradient(105deg,#536e80,#d9e4e9 28%,#91a8b6 55%,#425c70);background-size:36px 43px;background-repeat:no-repeat;transform:translateX(var(--door-open));animation:none}
+#petHome .petHelmetVisor:before{left:0;--door-open:-105%;border-radius:0;background-position:left top}
+#petHome .petHelmetVisor:after{right:0;--door-open:105%;border-radius:0;background-position:right top;box-shadow:inset .5px 0 #344b5b70}
+@keyframes petCapsuleDoor{0%,8%,96%,100%{transform:translateX(var(--door-open))}20%,86%{transform:translateX(0)}}
 body:has(#petDeck:not([hidden])) .petHelmetVisor:before,body:has(#petDeck:not([hidden])) .petHelmetVisor:after,body:has(#petManager:not([hidden])) .petHelmetVisor:before,body:has(#petManager:not([hidden])) .petHelmetVisor:after,body:has(dialog[open]) .petHelmetVisor:before,body:has(dialog[open]) .petHelmetVisor:after{animation-play-state:paused}
 @media(prefers-reduced-motion:reduce){#petHome .petHelmetVisor:before,#petHome .petHelmetVisor:after{animation:none;transform:translateX(var(--door-open))}}
 body:has(#petDeck:not([hidden])) .petAccountHelmet,
@@ -97,9 +98,150 @@ body:has(dialog[open]) .petHelmetExhaust{animation-play-state:paused}
 @media(prefers-reduced-motion:reduce){#petHome .petAccountHelmet,#petHome .petHelmetExhaust{animation:none}#petHome .petHelmetExhaust{display:none}}
 
 /* One short launch per random timer; no animation runs while idle. */
-#petHome .petCapsuleIgniting .petHelmetExhaust{animation:petCapsuleExhaust 3.6s linear both}
-#petHome .petCapsuleIgniting .petAccountHelmet{animation:petCapsuleLaunch 3.6s ease-in-out both}
-#petHome .petCapsuleIgniting .petHelmetVisor:before,#petHome .petCapsuleIgniting .petHelmetVisor:after{animation:petCapsuleDoor 3.6s ease-in-out both}
-#petHome .petCapsuleIgniting #petStatus{animation:petCapsuleWarmup 3.6s ease-in-out both}
+#petHome .petCapsuleIgniting .petHelmetExhaust{animation:petCapsuleExhaust 6s linear both}
+#petHome .petCapsuleIgniting .petAccountHelmet{animation:petCapsuleLaunch 6s ease-in-out both}
+#petHome .petCapsuleIgniting .petHelmetVisor:before,#petHome .petCapsuleIgniting .petHelmetVisor:after{animation:petCapsuleDoor 6s ease-in-out both}
+#petHome .petCapsuleIgniting #petStatus{animation:petCapsuleWarmup 6s ease-in-out both}
 @keyframes petCapsuleWarmup{0%,100%{filter:brightness(1)}35%,65%{filter:brightness(1.7)}75%{filter:brightness(1.3)}}
 @media(prefers-reduced-motion:reduce){#petHome .petCapsuleIgniting .petHelmetExhaust,#petHome .petCapsuleIgniting .petAccountHelmet,#petHome .petCapsuleIgniting .petHelmetVisor:before,#petHome .petCapsuleIgniting .petHelmetVisor:after,#petHome .petCapsuleIgniting #petStatus{animation:none}}
+
+/* Lamp is mounted in the animated cabin base, so it travels with the metal. */
+#petHome .petHeadRight .petHeadAccount .petAccountHelmet #petStatus{top:54px;bottom:auto;left:50%;z-index:2}
+
+/* Black gold leather, machined clasp and a single restrained entrance. */
+#petHome #petHomeWallet svg{width:35px;height:35px;filter:drop-shadow(0 3px 2px #07101b80)}
+#walletDialog{background:radial-gradient(ellipse at 90% 0,#9d762c22,transparent 48%),radial-gradient(ellipse at 0 75%,#51402612,transparent 55%),#090b0d}
+#walletDialog .walletOverview{position:relative;isolation:isolate;overflow:hidden;padding:23px 21px 18px;border-radius:20px;border-color:#bda06b80;background:repeating-linear-gradient(115deg,#e8d29f03 0 1px,transparent 1px 4px),radial-gradient(ellipse at 12% 0,#b49b5f23,transparent 60%),linear-gradient(135deg,#29282a,#111216 56%,#1d1c1f);box-shadow:inset 0 1px #fff0c14a,inset 0 -1px #000,0 16px 28px #0006}
+#walletDialog .walletOverview:before{content:'';position:absolute;inset:7px;border:1px solid #d1b47b29;border-radius:14px;pointer-events:none;z-index:-1}
+#walletDialog .walletOverview:after{content:'';position:absolute;width:70%;height:180%;top:-45%;left:-100%;transform:rotate(24deg);background:linear-gradient(90deg,transparent,#f5dfb016,transparent);pointer-events:none;animation:walletGoldReveal 1.3s ease-out both;z-index:-1}
+#walletDialog .walletCardBrand{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0 22px}
+#walletDialog .walletCardBrand h1{margin:0;font-size:24px;font-weight:600;letter-spacing:.12em;color:#e1c78c;text-shadow:0 1px #000,0 -1px #fff0b329}
+#walletDialog .walletCrest{display:grid;place-items:center;flex:none;width:40px;height:40px;border:1px solid #b99b626b;outline:1px solid #b99b6226;outline-offset:4px;border-radius:50%;font-size:28px;color:#d8ba7c;background:radial-gradient(circle at 30% 15%,#65532e,#201f22 75%);box-shadow:inset 0 1px #fff0bd33}
+#walletDialog .walletCostLabel{display:block;font-size:11px;letter-spacing:.08em;color:#a79c85;margin-bottom:12px}
+#walletDialog .walletTotals strong{font-size:29px;font-variant-numeric:tabular-nums;font-weight:550;color:#f3e5c0}
+#walletDialog .walletTotals:has(>strong) strong{font-size:21px;font-weight:400;color:#baaa87}
+#walletDialog .walletCardFooter{display:flex;justify-content:space-between;gap:10px;border-top:1px solid #bca0642b;margin-top:25px;padding-top:14px;font-size:9px;letter-spacing:.06em;color:#968568}
+#walletDialog .walletSectionHeading{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:25px 2px 12px}
+#walletDialog .walletSectionHeading h2{font-size:15px;margin:0}
+#walletDialog .walletSectionHeading>span{font-size:8px;letter-spacing:.14em;color:#8c7b5d}
+#walletDialog .walletHoldings{margin:0 0 20px}
+#walletDialog .walletHolding{border-radius:14px;border-color:#b69b643d;background:linear-gradient(120deg,#24212370,#131518);box-shadow:inset 0 1px #fff0c00a}
+#walletDialog .walletEmpty{border:1px dashed #b69b6440;border-radius:16px;background:radial-gradient(ellipse at 50% 0,#aa8a4810,transparent 75%);padding:22px 14px}
+#walletDialog .walletEmpty>span{width:45px;height:45px;line-height:45px;border:1px solid #b69b6440;border-radius:50%;margin:0 auto 12px;font-size:27px;background:#c6a56908}
+#walletDialog .walletForm{background:linear-gradient(125deg,#24212670,#111315);border-color:#b99b6245;box-shadow:inset 0 1px #fff0c00c}
+@keyframes walletGoldReveal{to{left:150%}}
+@media(prefers-reduced-motion:reduce){#walletDialog .walletOverview:after{animation:none;display:none}}
+@media(min-width:600px){#walletDialog .walletScroll{width:100%;max-width:680px;align-self:center;box-sizing:border-box}}
+
+/* The cabin rim sits above the door edges as a single machined housing. */
+#petHome .petAccountHelmet>svg{z-index:3}
+#petHome .petHelmetVisor{top:8px;height:43px;border-radius:48%;box-shadow:inset 0 0 0 1px #142835}
+#petHome .petHeadRight .petHeadAccount .petAccountHelmet #petStatus{z-index:4}
+
+/* Private orbital vault: layered graphite housing and precise gold instrumentation. */
+#walletDialog{--vault-gold:#cbb17b;--vault-line:#bfa06a35;background:radial-gradient(ellipse at 100% 0,#72572920,transparent 46%),repeating-linear-gradient(0deg,transparent 0 79px,#a6916406 79px 80px),repeating-linear-gradient(90deg,transparent 0 79px,#a6916406 79px 80px),#080b0e}
+#walletDialog .walletHeader{background:linear-gradient(120deg,#15191d,#0b0e12);border-bottom:1px solid #b9a17138;box-shadow:0 6px 22px #0004}
+#walletDialog .walletHeader .mobilePageTitle{font-weight:500;font-size:16px;letter-spacing:.08em;color:#e5dcc8}
+#walletDialog .walletHeader .mobilePageBack{border-radius:10px;background:linear-gradient(135deg,#293034,#10151a);border-color:#c0ac7845;box-shadow:inset 0 1px #eee2b921}
+#walletDialog .walletScroll{padding-top:18px}
+#walletDialog .walletAccessStrip{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 3px 14px;font:9px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.16em;color:#817c70}
+#walletDialog .walletPrivacyState{display:flex;align-items:center;gap:7px;font-size:10px;letter-spacing:.06em;color:#b8ab8c}
+#walletDialog .walletPrivacyState:before{content:'';width:4px;height:4px;border-radius:50%;background:#b7a578;box-shadow:0 0 7px #b7a57880}
+#walletDialog .walletOverview{padding:24px 21px 18px;border-radius:4px 22px 4px 22px;border-color:#b8a17359;background:linear-gradient(90deg,#080c1160,transparent 80%),repeating-linear-gradient(125deg,transparent 0 3px,#dcc89d03 3px 4px),linear-gradient(135deg,#252a2e,#12171d 48%,#090e14);box-shadow:inset 0 1px #e4d4a735,inset 0 -1px #000,0 18px 32px #0006}
+#walletDialog .walletOverview:before{inset:6px;border:1px solid #c5ad751b;border-radius:1px 17px 1px 17px;background:linear-gradient(#d4bb80,#d4bb80) left top/20px 1px no-repeat,linear-gradient(#d4bb80,#d4bb80) left top/1px 20px no-repeat,linear-gradient(#d4bb80,#d4bb80) right bottom/20px 1px no-repeat,linear-gradient(#d4bb80,#d4bb80) right bottom/1px 20px no-repeat}
+#walletDialog .walletVaultArt{position:absolute;right:-46px;top:16px;width:220px;height:220px;z-index:-1;color:#baa475;opacity:.18;pointer-events:none}
+#walletDialog .walletEyebrow{font:9px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.18em;color:#bcaa83}
+#walletDialog .walletCardBrand{margin:19px 0 29px}
+#walletDialog .walletCardBrand h1{font-size:25px;letter-spacing:.12em;font-weight:500;color:#e3d1ab;text-shadow:0 1px #000}
+#walletDialog .walletCardBrand .walletVaultSubtitle{font-size:11px;letter-spacing:.06em;color:#8c9398;margin:9px 0 0}
+#walletDialog .walletPrivacyToolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+#walletDialog .walletCostLabel{margin:0;color:#929b9f;font-size:11px}
+#walletDialog .walletPrivacyToggle{display:flex;align-items:center;justify-content:center;gap:6px;min-height:36px;padding:5px 8px;border:1px solid #b8a47538;border-radius:6px;background:#0b10178c;box-shadow:inset 0 1px #fff2c40b;color:#bcad8e;font-size:10px;white-space:nowrap}
+#walletDialog .walletPrivacyToggle svg{width:17px;height:17px;flex:none}
+#walletDialog:not(.walletPrivacyHidden) .walletPrivacySlash{display:none}
+#walletDialog .walletTotals{gap:14px;min-height:46px}
+#walletDialog .walletTotals small{font:10px ui-monospace,SFMono-Regular,Menlo,monospace;color:#9b9381;margin-bottom:6px}
+#walletDialog .walletTotals strong{color:#e9dfc8;letter-spacing:.015em;font-size:30px;font-weight:450;line-height:1.3}
+#walletDialog.walletPrivacyHidden .walletTotals>div strong{font-size:25px;letter-spacing:.16em;color:#c6b58c}
+#walletDialog .walletCardFooter{font-size:8px;letter-spacing:.09em;border-color:#c1ac7825;margin-top:25px;padding-top:15px}
+#walletDialog .walletSectionHeading{margin-top:27px;margin-bottom:15px}
+#walletDialog .walletSectionHeading h2{font-size:14px;letter-spacing:.08em;color:#c5c7c2}
+#walletDialog .walletSectionHeading>span{font:8px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;color:#767c7d}
+#walletDialog .walletHolding{position:relative;padding:18px;border:1px solid #a7996c30;border-radius:3px 14px 3px 14px;background:linear-gradient(125deg,#22282d,#0f151b 65%);box-shadow:inset 0 1px #f2e5c10b}
+#walletDialog .walletHolding:before{content:'';position:absolute;left:-1px;top:19px;width:2px;height:24px;background:#bda679;box-shadow:0 0 9px #bda67930}
+#walletDialog .walletHoldingHead h3{font-size:15px;font-weight:550;color:#d9dcd6}
+#walletDialog .walletHoldingHead small{border-radius:3px;color:#b7a784;background:#b7a78406;font-size:9px}
+#walletDialog .walletHolding dl{gap:13px;margin-top:21px}
+#walletDialog dt{color:#7f8a92}
+#walletDialog dd{font-variant-numeric:tabular-nums;color:#c6cdd0}
+#walletDialog.walletPrivacyHidden dd{letter-spacing:.1em;color:#a7a38f}
+#walletDialog .walletHoldingActions{border-color:#89908e19}
+#walletDialog .walletEmpty{position:relative;overflow:hidden;min-height:135px;box-sizing:border-box;padding:25px 18px;border:1px solid #a7996c26;border-radius:3px 14px 3px 14px;background:linear-gradient(120deg,#1e252b8c,#0b1117);box-shadow:inset 0 1px #f2e5c10b}
+#walletDialog .walletEmpty>span{border-radius:8px;border-color:#b7a78435;transform:rotate(45deg);font-size:23px;color:#b7a784;background:linear-gradient(135deg,#bba5750a,transparent);margin-bottom:21px}
+#walletDialog .walletEmpty h3{font-size:14px;font-weight:400;letter-spacing:.05em;color:#b9c0c0}
+#walletDialog .walletEmpty p{font-size:11px;color:#6f7b85;margin-bottom:0}
+#walletDialog .walletEntryPanel{border:1px solid #a7996c3b;border-radius:3px 14px 3px 14px;background:linear-gradient(125deg,#22282d,#0f151b);overflow:hidden}
+#walletDialog .walletEntryPanel>summary{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 18px;list-style:none;color:#cebf9d;font-size:13px;letter-spacing:.04em;cursor:pointer;min-height:46px;box-sizing:border-box}
+#walletDialog .walletEntryPanel>summary::-webkit-details-marker{display:none}
+#walletDialog .walletEntryPanel>summary>span:last-child{font-size:20px;font-weight:300;color:#a79975}
+#walletDialog .walletEntryPanel[open]>summary{border-bottom:1px solid #b3a27126}
+#walletDialog .walletEntryPanel[open]>summary>span:last-child{transform:rotate(45deg)}
+#walletDialog .walletForm{border:0;border-radius:0;background:transparent;box-shadow:none;padding:18px}
+#walletDialog .walletForm h2{font-size:14px;color:#aeb6b8}
+#walletDialog input,#walletDialog select{border-radius:4px;border-color:#7c85834a;background:#080e14;color:#d9dfdd}
+#walletDialog .walletFormActions .walletSave{border-radius:4px;border-color:#c0aa7973;background:linear-gradient(130deg,#bcab85,#8d7b58);color:#12191e;box-shadow:inset 0 1px #f9e4b344}
+#walletDialog .walletFormActions .walletCancelEdit{border-radius:4px;background:#131c24;border-color:#89908e33;color:#aeb6b8}
+#walletDialog :is(button,summary):focus-visible{outline:2px solid #c8b589;outline-offset:3px}
+@media(max-width:350px){#walletDialog .walletScroll{padding-left:14px;padding-right:14px}#walletDialog .walletOverview{padding-left:18px;padding-right:18px}#walletDialog .walletCardBrand h1{font-size:22px}#walletDialog .walletVaultArt{width:190px;height:190px;right:-57px;top:30px}#walletDialog .walletTotals strong{font-size:26px}}
+
+/* Size the content to the usable screen, not a fixed phone-width strip. */
+#walletDialog .walletScroll{width:100%;max-width:none;box-sizing:border-box;align-self:stretch;padding-left:clamp(14px,4.5vw,52px);padding-right:clamp(14px,4.5vw,52px)}
+#walletDialog .walletHeader{display:flex;align-items:center;gap:14px;box-sizing:border-box}
+#walletDialog .walletOverview{padding:clamp(21px,5vw,30px)}
+#walletDialog .walletCardBrand h1{font-size:clamp(22px,5.8vw,30px)}
+#walletDialog .walletTotals strong{font-size:clamp(27px,7.5vw,40px)}
+#walletDialog .walletHolding{padding:clamp(16px,4.5vw,25px)}
+@media(min-width:760px){
+ #walletDialog .walletScroll{display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1.2fr);grid-template-rows:auto auto auto auto;align-content:start;align-items:start;column-gap:clamp(20px,3vw,40px);row-gap:18px;max-width:1440px;margin:0 auto;padding-top:26px;padding-bottom:calc(var(--ui-safe-bottom,env(safe-area-inset-bottom,0px)) + 32px)}
+ #walletDialog .walletAccessStrip{grid-column:1/-1;margin:0;font-size:10px}
+ #walletDialog .walletOverview{grid-column:1;grid-row:2/5;min-width:0;position:sticky;top:0}
+ #walletDialog .walletSectionHeading{grid-column:2;grid-row:2;margin:4px 0 0}
+ #walletDialog .walletHoldings{grid-column:2;grid-row:3;margin:0;gap:16px}
+ #walletDialog .walletEntryPanel{grid-column:2;grid-row:4;min-width:0}
+ #walletDialog .walletVaultArt{width:260px;height:260px;right:-38px;top:24px}
+ #walletDialog .walletCardBrand{margin-top:25px;margin-bottom:34px}
+ #walletDialog .walletCardBrand h1{font-size:clamp(26px,3vw,34px)}
+ #walletDialog .walletCostLabel,#walletDialog .walletVaultSubtitle{font-size:13px}
+ #walletDialog .walletPrivacyToggle{min-height:42px;font-size:12px}
+ #walletDialog .walletPrivacyState{font-size:12px}
+ #walletDialog .walletTotals{gap:22px}
+ #walletDialog .walletTotals small{font-size:12px}
+ #walletDialog.walletPrivacyHidden .walletTotals>div strong{font-size:30px}
+ #walletDialog .walletHoldingHead h3{font-size:18px}
+ #walletDialog .walletHoldingHead small,#walletDialog dt{font-size:12px}
+ #walletDialog dd{font-size:14px}
+ #walletDialog .walletSectionHeading h2{font-size:17px}
+ #walletDialog .walletEntryPanel>summary{font-size:15px;min-height:58px}
+ #walletDialog .walletForm{padding:24px;gap:18px 16px}
+ #walletDialog label{font-size:13px}
+ #walletDialog .walletHeader{padding-left:clamp(24px,4.5vw,52px);padding-right:clamp(24px,4.5vw,52px)}
+}
+@media(min-width:1180px){#walletDialog .walletHoldings{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(min-width:760px){
+ #petHome .petHomeToolRows{grid-template-columns:repeat(4,minmax(0,46px));grid-template-rows:64px 56px;gap:4px}
+ #petHome .petHomeToolRows>button{font-size:12px}
+ #petHome .petHomeUtility svg{width:40px;height:40px}
+ #petHome #petHomeWallet svg{width:42px;height:42px}
+ #petHome .petBrandBadge{flex-basis:65px;width:65px;height:86px}
+ #petHome .petBrandBadge>svg{width:65px;height:86px}
+}
+
+/* Market-linked holdings keep figures and chart inside the private vault. */
+#walletDialog .walletSearchResults{display:grid;gap:0;margin-top:8px;max-height:280px;overflow:auto;font-size:12px;color:#b9aa8a}
+#walletDialog .walletSearchResults button{min-height:46px;width:100%;padding:10px 4px;border:0;border-bottom:1px solid #c0a26633;border-radius:0;background:transparent;color:#eadabb;text-align:left;white-space:normal}
+#walletDialog .walletGain{color:#8fddba}#walletDialog .walletLoss{color:#ed9d91}
+#walletDialog .walletHistory{min-width:0;padding:12px 0;color:#b9aa8a;font-size:11px;line-height:1.7}
+#walletDialog .walletHistory svg{display:block;width:100%;height:110px;margin:10px 0;overflow:hidden;background:linear-gradient(180deg,#d7b66a0d,transparent);border-bottom:1px solid #c0a26633}
+#walletDialog .walletHistory polyline{fill:none;stroke:#dbbd7a;stroke-width:2;vector-effect:non-scaling-stroke}
+#walletDialog .walletHistoryValue{font-size:12px;color:#eadabb;overflow-wrap:anywhere}
+#walletDialog .walletPnlTotal{margin:4px 0;font-size:12px;color:#c9b68d}

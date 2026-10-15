@@ -2,22 +2,22 @@
 (()=>{'use strict';
   const root=document.documentElement;
   const mobileOnlyEntry=root.hasAttribute('data-orbit-entry');
-  const detectedPhone=/Android.*Mobile|iPhone|iPod/i.test(navigator.userAgent||'')||navigator.userAgentData?.mobile===true||((navigator.maxTouchPoints||0)>0&&window.matchMedia('(pointer:coarse)').matches&&Math.min(screen.width,screen.height)<=720);
+  const detectedTablet=/iPad/i.test(navigator.userAgent||'')||(/Macintosh/i.test(navigator.userAgent||'')&&(navigator.maxTouchPoints||0)>0);
+  const detectedPhone=!detectedTablet&&(/Android.*Mobile|iPhone|iPod/i.test(navigator.userAgent||'')||navigator.userAgentData?.mobile===true||((navigator.maxTouchPoints||0)>0&&window.matchMedia('(pointer:coarse)').matches&&Math.min(screen.width,screen.height)<=720));
   // The main entry now always loads the mobile application, including wide windows.
   const phone=mobileOnlyEntry||detectedPhone;
-  const portraitEntry=detectedPhone||window.innerWidth<=720;
   const isMobile=()=>phone||window.innerWidth<=720;
   // Use this phone's available portrait area, preserving it across rotation and keyboard overlay.
   const portrait={width:Math.min(screen.width||window.innerWidth,screen.height||window.innerHeight),height:Math.max(screen.width||window.innerWidth,screen.height||window.innerHeight)};
-  if(mobileOnlyEntry&&!detectedPhone){portrait.width=Math.min(480,window.innerWidth);portrait.height=window.innerHeight}
+  if(mobileOnlyEntry&&!detectedPhone){portrait.width=window.innerWidth;portrait.height=window.innerHeight}
   else if(phone&&window.innerWidth<=window.innerHeight){portrait.width=window.innerWidth;portrait.height=window.innerHeight}
   const viewport=()=>{
     const pinned=window.MarketKeyboard?.lockedViewport?.();if(pinned)return pinned;
     // resize can arrive before orientation updates; never capture landscape width as portrait.
     const turned=window.innerWidth>window.innerHeight&&window.innerWidth>portrait.width*1.2;
     const view=window.visualViewport;
-    if(mobileOnlyEntry&&!portraitEntry)return {width:Math.min(480,view?.width||window.innerWidth),height:view?.height||window.innerHeight,offsetTop:view?.offsetTop||0};
-    if(phone&&turned)return {...portrait,offsetTop:0};
+    if(mobileOnlyEntry&&!detectedPhone)return {width:view?.width||window.innerWidth,height:view?.height||window.innerHeight,offsetTop:view?.offsetTop||0};
+    if(detectedPhone&&turned)return {...portrait,offsetTop:0};
     return {width:view?.width||window.innerWidth,height:view?.height||window.innerHeight,offsetTop:view?.offsetTop||0};
   };
   root.dataset.device=phone?'phone':'desktop';
@@ -26,7 +26,7 @@
   let portraitLockPending=false,portraitLocked=false,nextPortraitLockTry=0;
   function tryPortraitLock(event){
     const orientation=screen.orientation;
-    if(!phone||document.hidden||event?.isTrusted===false||portraitLocked||portraitLockPending||Date.now()<nextPortraitLockTry||typeof orientation?.lock!=='function')return;
+    if(!detectedPhone||document.hidden||event?.isTrusted===false||portraitLocked||portraitLockPending||Date.now()<nextPortraitLockTry||typeof orientation?.lock!=='function')return;
     portraitLockPending=true;
     const failed=()=>{portraitLocked=false;nextPortraitLockTry=Date.now()+5000};
     try{Promise.resolve(orientation.lock('portrait-primary')).then(()=>{portraitLocked=true},failed).finally(()=>{portraitLockPending=false})}
@@ -37,7 +37,7 @@
   document.addEventListener('visibilitychange',()=>{if(document.hidden){portraitLocked=false;nextPortraitLockTry=0}});
   const lockedSheets=new WeakSet(),phoneMediaRules=[];
   // Cover browser controls from the first paint, without following keyboard/toolbar shrink.
-  const screenWallpaperHeight=screen.width<=720?Math.max(screen.height||0,screen.width||0):0;
+  const screenWallpaperHeight=(screen.width<=720||(navigator.maxTouchPoints||0)>0)?Math.max(screen.height||0,screen.width||0):0;
   let wallpaperHeight=Math.max(window.innerHeight,portrait.height,screenWallpaperHeight);
   function lockPhoneStyles(){
     if(!phone)return;
@@ -58,14 +58,16 @@
     for(const sheet of document.styleSheets){if(lockedSheets.has(sheet))continue;try{lockRules(sheet.cssRules);lockedSheets.add(sheet)}catch{}}
     for(const {rule,query} of phoneMediaRules){
       rule.media.mediaText=query.replace(/\((min|max)-(width|height):\s*([\d.]+)px\)/g,(_,bound,axis,n)=>{
-        const matches=bound==='min'?portrait[axis]>=Number(n):portrait[axis]<=Number(n);
+        // 720/721 switch the application shell, not its physical width.
+        const shellBreakpoint=axis==='width'&&((bound==='max'&&Number(n)===720)||(bound==='min'&&Number(n)===721));
+        const matches=shellBreakpoint?bound==='max':bound==='min'?portrait[axis]>=Number(n):portrait[axis]<=Number(n);
         return matches?'(min-width:0px)':'(max-width:0px)';
       });
     }
     const setViewportValue=(name,value)=>{if(root.style.getPropertyValue?.(name)!==value)root.style.setProperty(name,value)};
     setViewportValue('--phone-layout-width',portrait.width+'px');
     setViewportValue('--phone-layout-height',portrait.height+'px');
-    wallpaperHeight=Math.max(wallpaperHeight,window.innerHeight,view.height,portrait.height);
+    wallpaperHeight=Math.max(wallpaperHeight,window.innerHeight,view.height+(view.offsetTop||0),portrait.height,screenWallpaperHeight);
     setViewportValue('--wallpaper-viewport-height',wallpaperHeight+'px');
     setViewportValue('--mobile-viewport-height',portrait.height+'px');
   }

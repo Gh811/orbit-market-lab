@@ -1,0 +1,14 @@
+[Unit]
+Description=Check and deploy tested Orbit GitHub releases
+Wants=network-online.target
+After=network-online.target
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/orbit-update
+TimeoutStartSec=900
+Nice=10
+IOSchedulingClass=idle
+CPUQuota=80%
+MemoryMax=1500M
+PrivateTmp=true
+ProtectHome=true

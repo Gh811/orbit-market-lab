@@ -14,3 +14,11 @@ class WalletState(unittest.TestCase):
    store.save_state(store.session(token)['id'],{'wallet':[row]})
    reopened=AccountStore(Path(folder)/'accounts.sqlite3')
    self.assertEqual(reopened.session(token)['state']['wallet'],[row])
+
+ def test_market_link_and_date_survive_account_storage(self):
+  row={'id':'linked','name':'BTC','category':'crypto','currency':'USDT','quantity':.25,'price':60000,'symbol':'BTC','assetType':'swap','acquiredAt':'2024-01-01'}
+  self.assertEqual(clean_state({'wallet':[row]})['wallet'],[row])
+  invalid={**row,'symbol':'../bad','acquiredAt':'2024-02-31'}
+  cleaned=clean_state({'wallet':[invalid]})['wallet'][0]
+  self.assertNotIn('symbol',cleaned)
+  self.assertNotIn('acquiredAt',cleaned)
