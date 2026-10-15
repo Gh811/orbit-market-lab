@@ -6,6 +6,12 @@ from release_tools import version_html, build_snapshot, release_identity
 
 
 class ReleaseVersionsTest(unittest.TestCase):
+    def test_page_exposes_its_own_release_for_version_checks(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);(root/'release.json').write_text('{"releaseId":"release-a"}')
+            html=version_html('<html><head></head><body></body></html>',root,'/')
+            self.assertIn(b'<meta name="orbit-release" content="release-a">',html)
+
     def test_html_uses_actual_file_version_and_changes_when_asset_changes(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder); (root / 'assets').mkdir(); asset = root / 'assets/app.js'

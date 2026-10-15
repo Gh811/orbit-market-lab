@@ -55,9 +55,9 @@ class MobileAssetTests(unittest.TestCase):
     def test_device_routing_keeps_desktop_downloads_separate_from_mobile(self):
         cases=[('Mozilla/5.0 (Windows NT 10.0; Win64; x64)','/',b'download.css',b'assets/app.js'),
                ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15)','/',b'device-entry.js',b'assets/app.js'),
-               ('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)','/',b'assets/app.js',b'authDownloadLink'),
-               ('Mozilla/5.0 (Linux; Android 13; Tablet)','/',b'assets/app.js',b'authDownloadLink'),
-               ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15)','/?device=mobile',b'assets/app.js',b'authDownloadLink'),
+               ('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)','/',b'assets/app.js',b'assets/device-entry.js'),
+               ('Mozilla/5.0 (Linux; Android 13; Tablet)','/',b'assets/app.js',b'assets/device-entry.js'),
+               ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15)','/?device=mobile',b'assets/app.js',b'assets/device-entry.js'),
                ('Mozilla/5.0 (Windows NT 10.0; Win64; x64)','/backtest/',b'download.css',b'backtest/app.js')]
         for agent,path,present,absent in cases:
             with self.subTest(agent=agent,path=path):
@@ -65,6 +65,19 @@ class MobileAssetTests(unittest.TestCase):
                 handler.respond=lambda status,body,mime='application/json',**kwargs:(status,body,mime)
                 status,body,mime=handler.do_GET()
                 self.assertEqual(status,200);self.assertIn(present,body);self.assertNotIn(absent,body)
+
+    def test_old_client_is_blocked_until_it_updates(self):
+        from unittest.mock import patch
+        with patch.object(server,'required_client_release',return_value='release-b'):
+            handler=object.__new__(server.Handler);handler.headers={'Host':'localhost','X-Orbit-Release':'release-a'};handler.path='/api/auth/session'
+            responses=[]
+            handler.respond=lambda status,body,mime='application/json',**kwargs:responses.append((status,body,mime))
+            handler.do_GET();status,body,mime=responses[-1]
+            self.assertEqual(status,401);self.assertTrue(body['updateRequired']);self.assertEqual(body['requiredRelease'],'release-b')
+            handler.path='/api/auth/login';handler.do_POST()
+            self.assertEqual(handler.require_current_client(),True)
+            handler.headers['X-Orbit-Release']='release-b'
+            self.assertFalse(handler.require_current_client())
 
     def test_unlisted_files_remain_private(self):
         for path in ['/assets/pets/../../server.py', '/.market_accounts.sqlite3', '/assets/pets/missing.png']:

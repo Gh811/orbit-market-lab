@@ -4716,3 +4716,21 @@ html[data-device="phone"] #authDialog:not(.mobilePasswordView):has(#authSigned:n
  html[data-device="phone"] #petWorldDialog .petWorldExhibit{height:auto;max-height:none}
  html[data-device="phone"] #petWorldDialog .petWorldInfo{max-width:680px}
 }
+
+#authDialog #accountVersion{display:block;flex:none;align-self:center;text-align:center;margin:5px 0 0;font-size:10px;line-height:16px;color:#9eafbd;letter-spacing:.03em;overflow-wrap:anywhere}
+
+/* Android OEM browsers may inflate text or retain native form appearances. */
+html[data-os="android"]{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html[data-os="android"] :is(button,input:not([type="checkbox"]):not([type="radio"]),select){-webkit-appearance:none;appearance:none}
+@supports not (color:color-mix(in srgb,white,black)){
+ #petHome .petHeadRight .petHeadAccount #petStatus{background:radial-gradient(circle at 32% 25%,#fff 0 9%,#fff5dd 12%,var(--capsule-lamp,#ffd17a) 42%,#193041 80%);box-shadow:0 0 0 2px #243e50,inset -1px -1px 2px #14233180,0 0 7px 2px #a9d6c770}
+ .petComingSoon .petCrystalCabinet{border-color:#9cc8d566;background:linear-gradient(115deg,#dbfaff18,transparent 28%,#0c172c55 68%,#b4dcff12);box-shadow:inset 2px 0 4px #e4ffff22,0 0 18px #8ccada20}
+}
+@supports not selector(:has(*)){
+ html[data-device="phone"] #authDialog.accountSignedView{overflow:hidden;overscroll-behavior:none;touch-action:none}
+ html[data-device="phone"] #authDialog.accountSignedView .authPanel{height:calc(var(--mobile-viewport-height,100%) - 92px);overflow:hidden;padding-top:8px;padding-bottom:12px}
+ html[data-device="phone"] #authDialog.accountSignedView .authMascot{height:120px;margin-bottom:8px}
+ html[data-device="phone"] #authDialog.accountSignedView .authMascot:after{width:120px;height:120px}
+ html[data-device="phone"] #authDialog.accountSignedView>.mobilePageHeader{background:transparent;border-bottom:0}
+ @media(max-height:700px){html[data-device="phone"] #authDialog.accountSignedView .authMascot{height:92px;margin-bottom:4px}html[data-device="phone"] #authDialog.accountSignedView .authMascot:after{width:92px;height:92px}}
+}

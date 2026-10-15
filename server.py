@@ -1461,12 +1461,17 @@ def candles(kind, symbol, tf):
     return rows[-count:]
 
 
+def required_client_release():
+    identity=release_identity(ROOT).get("releaseId")
+    return identity if identity and identity!="development" else None
+
+
 def accounts():
     global ACCOUNT_STORE
     if ACCOUNT_STORE is None:
         with ACCOUNT_LOCK:
             if ACCOUNT_STORE is None:
-                ACCOUNT_STORE = AccountStore(ACCOUNT_DB)
+                ACCOUNT_STORE = AccountStore(ACCOUNT_DB,release_id=required_client_release())
     return ACCOUNT_STORE
 
 
@@ -1520,12 +1525,19 @@ class Handler(BaseHTTPRequestHandler):
         return (f"star_session={token}; Path=/; HttpOnly; SameSite=Lax; "
                 f"Max-Age={0 if clear else SESSION_SECONDS}{secure}")
 
+    def require_current_client(self):
+        required=required_client_release()
+        if not required or self.headers.get("X-Orbit-Release")==required:return False
+        self.respond(401,{"error":"版本已更新，请刷新页面完成更新后重新登录","updateRequired":True,"requiredRelease":required})
+        return True
+
     def do_POST(self):
         if self.headers.get("Host", "").split(":")[0].lower() not in ALLOWED_HOSTS:
             return self.respond(403, {"error": "只允许本机访问"})
         path = urlsplit(self.path).path
         if path not in ("/api/auth/register", "/api/auth/login", "/api/auth/logout", "/api/auth/password", "/api/auth/avatar", "/api/user/state", "/api/asset-discovery", "/api/backtest/jobs"):
             return self.respond(404, {"error": "未找到"})
+        if path!="/api/auth/logout" and self.require_current_client():return
         if self.headers.get("Content-Type", "").split(";")[0].strip() != "application/json":
             return self.respond(415, {"error": "请发送 JSON 数据"})
         try:
@@ -1646,6 +1658,13 @@ class Handler(BaseHTTPRequestHandler):
             page_ids = parse_qs(path.query, keep_blank_values=True).get("space")
             if page_ids is not None:
                 user = accounts().session(self.session_token())
+                if not user and required_client_release():
+                    self.send_response(303)
+                    self.send_header("Location","/?"+urlencode({"device":"mobile","_update":required_client_release()}))
+                    self.send_header("Cache-Control","no-store")
+                    self.send_header("Content-Length","0")
+                    self.end_headers()
+                    return
                 if (len(page_ids) != 1 or not user or
                         not hmac.compare_digest(page_ids[0], user["spaceId"])):
                     message = ('<!doctype html><html lang="zh-CN"><meta charset="utf-8">'
@@ -1683,7 +1702,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.respond(200, asset.read_bytes(), "image/png", cache_seconds=86400)
         if path.path == "/assets/pets/mascots-3d-v1.png":
             return self.respond(200, (ROOT / "assets/pets/mascots-3d-v1.png").read_bytes(), "image/png", cache_seconds=86400)
-        if path.path in ("/assets/data.js", "/assets/news-paper.js", "/assets/news-paper.css", "/assets/mobile-pages.js", "/assets/mobile-pages.css", "/assets/wallet.js", "/assets/wallet.css", "/assets/client-update.js", "/assets/device-entry.js", "/assets/download.css", "/assets/pets/personal-navigator-v1.png"):
+        if path.path in ("/assets/data.js", "/assets/news-paper.js", "/assets/news-paper.css", "/assets/mobile-pages.js", "/assets/mobile-pages.css", "/assets/wallet.js", "/assets/wallet.css", "/assets/client-update.js", "/assets/device-entry.js", "/assets/device-platform.js", "/assets/client-update.css", "/assets/download.css", "/assets/pets/personal-navigator-v1.png"):
             asset = ROOT / path.path.lstrip("/")
             if asset.is_file():
                 mime = {".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".png": "image/png"}[asset.suffix]
@@ -1708,7 +1727,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.respond(200, icon.read_bytes(), "image/svg+xml" if icon.suffix == ".svg" else "image/png", cache_seconds=86400)
         if path.path == "/api/status":
             return self.respond(200, {"marketReady": True, "market": "OKX", "newsReady": True,
-                                      "release": release_identity(ROOT), "serverTime": int(time.time() * 1000)})
+                                      "release": release_identity(ROOT), "clientUpdate":{"requiredRelease":required_client_release(),"force":True}, "serverTime": int(time.time() * 1000)})
+        if path.path.startswith("/api/") and path.path not in ("/api/logo","/api/logo-image") and self.require_current_client():return
         if path.path == "/api/auth/session":
             user = accounts().session(self.session_token())
             return self.respond(200, {"username": user["username"], "state": user["state"],
@@ -2042,6 +2062,7 @@ if __name__ == "__main__":
         cap = int(sys.argv[sys.argv.index("--limit") + 1]) if "--limit" in sys.argv else None
         backfill_logos(limit=cap)
         raise SystemExit
+    accounts()  # A release transition invalidates old sessions once, preserving user rows.
     server = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
     threading.Thread(target=refresh_active_market_data, daemon=True).start()
     threading.Thread(target=refresh_daily_hot, daemon=True).start()

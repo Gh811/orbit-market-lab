@@ -35,7 +35,7 @@
   for(const type of ['touchend','click','keydown'])document.addEventListener(type,tryPortraitLock,{capture:true,passive:true});
   document.addEventListener('fullscreenchange',()=>{portraitLocked=false;nextPortraitLockTry=0;if(document.fullscreenElement)tryPortraitLock()});
   document.addEventListener('visibilitychange',()=>{if(document.hidden){portraitLocked=false;nextPortraitLockTry=0}});
-  const lockedSheets=new WeakSet(),phoneMediaRules=[];
+  const lockedSheets=new WeakSet(),phoneMediaRules=[];let appliedMediaLayout='',viewportFrame=0;
   // Cover browser controls from the first paint, without following keyboard/toolbar shrink.
   const screenWallpaperHeight=(screen.width<=720||(navigator.maxTouchPoints||0)>0)?Math.max(screen.height||0,screen.width||0):0;
   let wallpaperHeight=Math.max(window.innerHeight,portrait.height,screenWallpaperHeight);
@@ -56,13 +56,18 @@
       if(rule.cssRules)lockRules(rule.cssRules);
     }};
     for(const sheet of document.styleSheets){if(lockedSheets.has(sheet))continue;try{lockRules(sheet.cssRules);lockedSheets.add(sheet)}catch{}}
+    const mediaLayout=portrait.width+':'+portrait.height+':'+phoneMediaRules.length;
+    if(mediaLayout!==appliedMediaLayout){
     for(const {rule,query} of phoneMediaRules){
-      rule.media.mediaText=query.replace(/\((min|max)-(width|height):\s*([\d.]+)px\)/g,(_,bound,axis,n)=>{
+      const mediaText=query.replace(/\((min|max)-(width|height):\s*([\d.]+)px\)/g,(_,bound,axis,n)=>{
         // 720/721 switch the application shell, not its physical width.
         const shellBreakpoint=axis==='width'&&((bound==='max'&&Number(n)===720)||(bound==='min'&&Number(n)===721));
         const matches=shellBreakpoint?bound==='max':bound==='min'?portrait[axis]>=Number(n):portrait[axis]<=Number(n);
         return matches?'(min-width:0px)':'(max-width:0px)';
       });
+      if(rule.media.mediaText!==mediaText)rule.media.mediaText=mediaText;
+    }
+    appliedMediaLayout=mediaLayout;
     }
     const setViewportValue=(name,value)=>{if(root.style.getPropertyValue?.(name)!==value)root.style.setProperty(name,value)};
     setViewportValue('--phone-layout-width',portrait.width+'px');
@@ -71,13 +76,14 @@
     setViewportValue('--wallpaper-viewport-height',wallpaperHeight+'px');
     setViewportValue('--mobile-viewport-height',portrait.height+'px');
   }
+  const schedulePhoneStyles=()=>{if(!window.requestAnimationFrame){lockPhoneStyles();return}if(viewportFrame)return;viewportFrame=window.requestAnimationFrame(()=>{viewportFrame=0;lockPhoneStyles()})};
   document.addEventListener('load',e=>{if(e.target.matches?.('link[rel="stylesheet"],link[data-entry-style]'))lockPhoneStyles()},true);
   document.addEventListener('DOMContentLoaded',lockPhoneStyles);
   window.addEventListener('resize',lockPhoneStyles,{passive:true});
   window.addEventListener('orientationchange',lockPhoneStyles,{passive:true});
   screen.orientation?.addEventListener?.('change',lockPhoneStyles);
-  window.visualViewport?.addEventListener('resize',lockPhoneStyles,{passive:true});
-  window.visualViewport?.addEventListener('scroll',lockPhoneStyles,{passive:true});
+  window.visualViewport?.addEventListener('resize',schedulePhoneStyles,{passive:true});
+  window.visualViewport?.addEventListener('scroll',schedulePhoneStyles,{passive:true});
   window.addEventListener('pageshow',lockPhoneStyles,{passive:true});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)lockPhoneStyles()});
   lockPhoneStyles();

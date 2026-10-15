@@ -4,7 +4,7 @@ project_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$project_root"
 command -v python3 >/dev/null
 command -v node >/dev/null
-for source in assets/client-update.js assets/wallet.js assets/app.js assets/theme.js assets/touch.js assets/data.js assets/mobile-pages.js assets/news-paper.js assets/news.js backtest/app.js; do
+for source in assets/device-platform.js assets/device-entry.js assets/client-update.js assets/wallet.js assets/app.js assets/theme.js assets/touch.js assets/data.js assets/mobile-pages.js assets/news-paper.js assets/news.js backtest/app.js; do
   node --check "$source"
 done
 python_checks=(test_company_batch test_library_transfer test_asset_library test_profile_cached_serving test_brand_discovery test_default_account_layout test_wallet_state test_release_versions test_public_asset_cache test_generic_company_profiles test_quote_recovery test_accounts test_market_store test_ashare_market test_curated_profiles test_progressive_profiles test_asset_data_pipeline test_research_jobs)

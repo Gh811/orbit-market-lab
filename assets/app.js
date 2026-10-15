@@ -1547,7 +1547,15 @@ async function postApi(url,body={},keepalive=false){
     error.status=response.status;error.body=data;throw error}
   return data;
 }
+window.addEventListener('orbit:force-update',()=>{
+  document.activeElement?.blur?.();
+  for(const dialog of document.querySelectorAll('dialog[open]'))if(dialog.id!=='authDialog'&&dialog.id!=='requiredUpdateDialog')dialog.close();
+  clearAccountView();
+  $('authError').textContent='版本已更新，请先完成更新后重新登录';
+});
 function renderAccount(){
+  $('authDialog').classList.toggle('accountSignedView',!!accountUser);
+  const version=$('accountVersion'),release=document.querySelector('meta[name="orbit-release"]')?.content||'development';if(version){version.textContent=release==='development'?'版本 · 开发中':'版本 '+release.replace(/^orbit-(\d{4})(\d{2})(\d{2})-/,'$1.$2.$3 · ');version.title=release}
   $('authDialog').classList.remove('mobilePasswordView');
   if((window.MarketDevice?.isMobile?.()??window.innerWidth<=720))$('passwordDetails').open=false;
   $('accountButton').textContent=accountUser?accountUser+' · 账户':'登录 / 注册';
@@ -4858,8 +4866,9 @@ function setupPetHome(){
       if(height<(syncMobileViewport.fullHeight||0))return;
       syncMobileViewport.fullHeight=height;
     }else syncMobileViewport.fullHeight=height;
-    document.documentElement.style.setProperty('--mobile-viewport-height',height+'px');
-    document.documentElement.style.setProperty('--mobile-viewport-top',(view?.offsetTop||0)+'px');
+    const style=document.documentElement.style,nextHeight=height+'px',nextTop=(view?.offsetTop||0)+'px';
+    if(style.getPropertyValue('--mobile-viewport-height')!==nextHeight)style.setProperty('--mobile-viewport-height',nextHeight);
+    if(style.getPropertyValue('--mobile-viewport-top')!==nextTop)style.setProperty('--mobile-viewport-top',nextTop);
   };
   window.visualViewport?.addEventListener('resize',syncMobileViewport);
   window.visualViewport?.addEventListener('scroll',syncMobileViewport);

@@ -1,4 +1,5 @@
 """Content versions and isolated, reproducible application snapshots."""
+import html
 import hashlib
 import json
 import re
@@ -37,6 +38,8 @@ def version_html(body, root, page_path):
         revised = urlunsplit(('', '', parsed.path, urlencode(params), parsed.fragment))
         return match.group(1) + match.group(2) + revised + match.group(2)
     text = body.decode('utf-8') if isinstance(body, bytes) else body
+    identity=html.escape(release_identity(root).get('releaseId') or 'development',quote=True)
+    text=re.sub(r'(<head(?:\s[^>]*)?>)',lambda m:m[0]+'<meta name="orbit-release" content="'+identity+'">',text,count=1,flags=re.I)
     pattern = r"((?:src|href)\s*=\s*)([\"'])([^\"']+\.(?:js|css)(?:\?[^\"']*)?)\2"
     return re.sub(pattern, replace, text).encode('utf-8')
 

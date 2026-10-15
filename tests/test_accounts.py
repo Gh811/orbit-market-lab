@@ -8,6 +8,21 @@ import server
 
 
 class AccountTests(unittest.TestCase):
+    def test_release_change_revokes_sessions_but_keeps_users_and_holdings(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'accounts.sqlite3'
+            first=AccountStore(path,release_id='release-a')
+            _,token=first.register('update_user','long-secret-A1')
+            user=first.session(token)
+            state={"wallet":[{"id":"btc","name":"BTC","quantity":1,"price":60000,"category":"crypto","currency":"USDT"}]}
+            first.save_state(user['id'],state)
+            self.assertIsNotNone(AccountStore(path,release_id='release-a').session(token))
+            updated=AccountStore(path,release_id='release-b')
+            self.assertIsNone(updated.session(token))
+            logged,new_token=updated.login('update_user','long-secret-A1')
+            self.assertEqual(logged['state']['wallet'],state['wallet'])
+            self.assertIsNotNone(AccountStore(path,release_id='release-b').session(new_token))
+
     def test_empty_pouch_keeps_identity_after_database_reopen_and_login(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "accounts.sqlite3"

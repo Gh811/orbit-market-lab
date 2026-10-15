@@ -1,0 +1,2 @@
+// Screen width does not identify an OS. Desktop-mode iPads have a Mac UA and touch.
+(()=>{'use strict';const ua=navigator.userAgent||'',ios=/iPhone|iPad|iPod/i.test(ua)||(/Macintosh/i.test(ua)&&(navigator.maxTouchPoints||0)>0);document.documentElement.dataset.os=ios?'ios':/Android/i.test(ua)?'android':'desktop'})();

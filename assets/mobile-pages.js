@@ -139,6 +139,7 @@
   }
   function restorePassword(){if(passwordMarker){passwordMarker.replaceWith($('passwordForm'));passwordMarker=null}}
   function activateDialog(dialog){
+    if(dialog.id==='requiredUpdateDialog')return;
     ensureHeader(dialog);
     if(dialog.id==='mobileMoreDialog')setMorePage(subpage);
   }
@@ -181,14 +182,18 @@
   },true);
   // 页内容保留原来的事件，观察开关状态来维护浏览器返回栈。
   new MutationObserver(records=>{
+    let routeChanged=false;
     for(const record of records){
       const node=record.target;
+      if(node===document.body||['petHome','petDeck','petManager','petNewsPicker'].includes(node.id))routeChanged=true;
       if(node instanceof HTMLDialogElement&&record.attributeName==='open'){
+        if(node.id==='requiredUpdateDialog')continue;
+        routeChanged=true;
         if(node.open){const i=dialogStack.indexOf(node);if(i>=0)dialogStack.splice(i,1);dialogStack.push(node);if(mobile())activateDialog(node)}
         else{const i=dialogStack.indexOf(node);if(i>=0)dialogStack.splice(i,1);if(node.id==='mobileMoreDialog')resetMore();if(node.id==='mobilePasswordPage')restorePassword()}
       }
     }
-    if(mobile())remember();
+    if(routeChanged&&mobile())remember();
   }).observe(document.body,{subtree:true,attributes:true,attributeFilter:['open','hidden','class']});
   document.addEventListener('reset',e=>{if(e.target.id==='passwordForm'&&$('mobilePasswordPage')?.open)$('mobilePasswordPage').close()},true);
   // 手机浏览器的原生返回使用 popstate；其他设备补充左边缘右滑。
@@ -215,5 +220,5 @@
   document.addEventListener('pointerup',e=>endEdge(e),true);
   document.addEventListener('pointercancel',e=>endEdge(e,true),true);
   window.addEventListener('resize',()=>{if(!mobile()){edge=null;if($('mobilePasswordPage')?.open)$('mobilePasswordPage').close();for(const d of dialogStack)d.querySelector(':scope > .mobilePageHeader')?.remove();restorePassword();resetMore()}else{for(const d of dialogStack)activateDialog(d);remember(true)}});
-  window.MarketMobilePages=Object.freeze({prepareDialog(){remember()},setActions(value){actions=value;for(const dialog of document.querySelectorAll('dialog[open]')){if(!dialogStack.includes(dialog))dialogStack.push(dialog);if(mobile())activateDialog(dialog)}remember(true)},showSearch(){if(mobile()){setMorePage('search');remember()}},pageDirectory,closeLocalDialog,back,deckBack,managerBack});
+  window.MarketMobilePages=Object.freeze({prepareDialog(){remember()},setActions(value){actions=value;for(const dialog of document.querySelectorAll('dialog[open]')){if(dialog.id==='requiredUpdateDialog')continue;if(!dialogStack.includes(dialog))dialogStack.push(dialog);if(mobile())activateDialog(dialog)}remember(true)},showSearch(){if(mobile()){setMorePage('search');remember()}},pageDirectory,closeLocalDialog,back,deckBack,managerBack});
 })();

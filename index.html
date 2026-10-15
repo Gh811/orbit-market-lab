@@ -19,9 +19,11 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="theme-color" content="#263c58"/>
   <link rel="preload" as="image" href="/assets/icons/crypto/spacerabbit.png?v=20261012-crystal43" fetchpriority="high"/>
+  <script src="/assets/device-platform.js"></script>
   <script src="/assets/theme.js?v=20261014-helmet-defaults131"></script>
   <link data-entry-critical rel="stylesheet" href="/assets/mobile-pages.css?v=20261014-loading-guard136"/>
   <link data-entry-style href="/assets/styles.css?v=20261014-wallet129" rel="stylesheet"/>
+  <link rel="stylesheet" href="/assets/client-update.css"/>
   <link data-entry-style href="/assets/wallet.css?v=20261014-home-capsule136" rel="stylesheet"/>
  <link data-entry-style rel="stylesheet" href="/assets/news-paper.css?v=20261014-paper-direction115">
  </head>
@@ -359,6 +361,7 @@
       <label>密码<input id="authPassword" autocomplete="current-password" minlength="1" maxlength="128" required type="password" placeholder="输入密码"/></label>
       <p class="authError" id="authError" role="alert"></p>
       <button class="accent authSubmit" id="authSubmit" type="submit">登录</button>
+      <a class="authDownloadLink" data-android-download href="/download">↓ 下载安卓客户端</a>
      </form>
      <div class="authSigned" id="authSigned" hidden>
       <header class="mobilePasswordHeading"><button type="button" data-close="authDialog" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.5 5 8.5 12 15.5 19"/></svg></button><strong>修改密码</strong></header>
@@ -384,6 +387,7 @@
       </details>
       <p class="authError" id="authSignedError" role="alert"></p>
       <button class="ghost" id="authLogout" type="button">退出登录</button>
+      <small id="accountVersion" class="accountVersion" aria-label="当前应用版本"></small>
      </div>
     </div>
    </dialog>

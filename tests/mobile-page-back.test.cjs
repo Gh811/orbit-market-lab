@@ -3,6 +3,7 @@ class Classes{constructor(){this.items=new Set()}contains(x){return this.items.h
 class Dialog{constructor(id){this.id=id;this.open=false;this.classList=new Classes();this.classList.add('mobileSheet')}close(){this.open=false}showModal(){this.open=true}querySelector(){return null}}
 const deck={hidden:true,dataset:{groupId:'main',index:'0'},classList:new Classes()},manager={hidden:true,dataset:{groupId:'main'}},guide=new Dialog('petHelpDialog'),news=new Dialog('petNewsDialog'),picker={hidden:true};
 const nodes={petDeck:deck,petManager:manager,petHelpDialog:guide,petNewsDialog:news,petNewsPicker:picker,petNewsList:{hidden:false},petNewsSearchButton:{hidden:false}};
+for(const [id,node]of Object.entries(nodes))node.id=id;
 let observer,timers=[],position=0,entries=[{}],draft={name:'before'};const events={};
 const clone=x=>JSON.parse(JSON.stringify(x));
 const history={get state(){return entries[position]},replaceState(s){entries[position]=clone(s)},pushState(s){entries.splice(position+1);entries.push(clone(s));position++},go(offset){position=Math.max(0,position+offset);events.popstate({state:entries[position]})},back(){if(position){position--;events.popstate({state:entries[position]})}}};

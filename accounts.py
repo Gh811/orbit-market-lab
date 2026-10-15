@@ -137,10 +137,11 @@ def default_account_state():
 
 
 class AccountStore:
-    def __init__(self, path):
+    def __init__(self, path, release_id=None):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self._db() as db:
+            db.execute("BEGIN IMMEDIATE")
             db.execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT NOT NULL, username_key TEXT NOT NULL UNIQUE, salt BLOB NOT NULL, password_hash BLOB NOT NULL, state TEXT)")
             db.execute("CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, user_id INTEGER NOT NULL, expires INTEGER NOT NULL, FOREIGN KEY(user_id) REFERENCES users(id))")
             columns = {row[1] for row in db.execute("PRAGMA table_info(users)")}
@@ -167,6 +168,12 @@ class AccountStore:
             for (user_id,) in db.execute("SELECT id FROM users WHERE public_id IS NULL"):
                 db.execute("UPDATE users SET public_id=? WHERE id=?", ("U" + secrets.token_hex(10).upper(), user_id))
             db.execute("CREATE UNIQUE INDEX IF NOT EXISTS users_public_id_unique ON users(public_id)")
+            if release_id:
+                db.execute("CREATE TABLE IF NOT EXISTS account_runtime (key TEXT PRIMARY KEY,value TEXT NOT NULL)")
+                previous=db.execute("SELECT value FROM account_runtime WHERE key='client_release'").fetchone()
+                if not previous or previous[0]!=release_id:
+                    db.execute("DELETE FROM sessions")
+                    db.execute("INSERT OR REPLACE INTO account_runtime(key,value) VALUES('client_release',?)",(release_id,))
         try:
             self.path.chmod(0o600)
         except OSError:
