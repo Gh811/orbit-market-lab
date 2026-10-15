@@ -3,3 +3,5 @@
 .iosDownloadNote{display:none}html[data-os="ios"] .download{display:none}html[data-os="ios"] .iosDownloadNote{display:block;font-size:13px;color:#d5c292}
 
 html[data-client="apk"] .download{display:none}
+
+.iosWebEntry{display:none}html[data-os="ios"] .iosWebEntry{display:inline-block}

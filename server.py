@@ -1647,12 +1647,14 @@ class Handler(BaseHTTPRequestHandler):
         path = urlsplit(self.path)
         if path.path in ("/", "/index.html", "/news.html", "/backtest/", "/backtest/index.html"):
             agent=self.headers.get("User-Agent","")
-            mobile_agent=bool(re.search(r"Android|iPhone|iPod|iPad|Tablet|Mobile",agent,re.I))
+            apple_agent=bool(re.search(r"iPhone|iPod|iPad",agent,re.I))
+            mac_agent=bool(re.search(r"Macintosh",agent,re.I))
+            native_agent=bool(re.search(r"Android",agent,re.I) and re.search(r"OrbitAndroid/",agent,re.I))
             touch_hint=parse_qs(path.query).get("device")==["mobile"]
-            # Desktop-mode iPads share the Mac UA; a tiny gate detects touch
-            # before loading any application scripts, pets, charts or data.
-            if agent and not mobile_agent and not touch_hint:
-                name="device-entry.html" if re.search(r"Macintosh",agent,re.I) else "download.html"
+            # Only Apple mobile web and the signed app's WebView enter the app.
+            # Android desktop-mode browsers still receive downloads (Linux UA).
+            if agent and not apple_agent and not native_agent and not (mac_agent and touch_hint):
+                name="device-entry.html" if mac_agent else "download.html"
                 return self.respond(200,version_html((ROOT/name).read_bytes(),ROOT,"/"+name),"text/html; charset=utf-8")
         if path.path in ("/", "/index.html", "/news.html"):
             page_ids = parse_qs(path.query, keep_blank_values=True).get("space")

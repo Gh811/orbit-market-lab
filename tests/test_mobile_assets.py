@@ -56,7 +56,9 @@ class MobileAssetTests(unittest.TestCase):
         cases=[('Mozilla/5.0 (Windows NT 10.0; Win64; x64)','/',b'download.css',b'assets/app.js'),
                ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15)','/',b'device-entry.js',b'assets/app.js'),
                ('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)','/',b'assets/app.js',b'assets/device-entry.js'),
-               ('Mozilla/5.0 (Linux; Android 13; Tablet)','/',b'assets/app.js',b'assets/device-entry.js'),
+               ('Mozilla/5.0 (Linux; Android 13; Tablet)','/',b'download.css',b'assets/app.js'),
+               ('Mozilla/5.0 (Linux; Android 13; Tablet)','/?device=mobile',b'download.css',b'assets/app.js'),
+               ('Mozilla/5.0 (Linux; Android 13; Tablet) OrbitAndroid/1.0.0','/',b'assets/app.js',b'authDownloadLink'),
                ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15)','/?device=mobile',b'assets/app.js',b'assets/device-entry.js'),
                ('Mozilla/5.0 (Windows NT 10.0; Win64; x64)','/backtest/',b'download.css',b'backtest/app.js')]
         for agent,path,present,absent in cases:

@@ -1,2 +1,2 @@
-// iPad desktop-mode UA resembles a Mac; touch detection happens before app assets load.
-(()=>{'use strict';const ua=navigator.userAgent||'',mobile=/Android|iPhone|iPod|iPad|Tablet|Mobile/i.test(ua)||(/Macintosh/i.test(ua)&&(navigator.maxTouchPoints||0)>0);if(mobile){const target=new URL(location.href);target.searchParams.set('device','mobile');location.replace(target.href)}else location.replace('/download')})();
+// Desktop-mode iPads share the Mac UA; Android browsers stay on downloads.
+(()=>{'use strict';const ua=navigator.userAgent||'',android=/Android/i.test(ua)||navigator.userAgentData?.platform==='Android',apple=!android&&(/iPhone|iPad|iPod/i.test(ua)||(/Macintosh/i.test(ua)&&(navigator.maxTouchPoints||0)>0));if(apple){const target=new URL(location.href);target.searchParams.set('device','mobile');location.replace(target.href)}else location.replace('/download')})();
