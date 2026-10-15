@@ -1633,6 +1633,15 @@ class Handler(BaseHTTPRequestHandler):
         if self.headers.get("Host", "").split(":")[0].lower() not in ALLOWED_HOSTS:
             return self.respond(403, {"error": "只允许本机访问"})
         path = urlsplit(self.path)
+        if path.path in ("/", "/index.html", "/news.html", "/backtest/", "/backtest/index.html"):
+            agent=self.headers.get("User-Agent","")
+            mobile_agent=bool(re.search(r"Android|iPhone|iPod|iPad|Tablet|Mobile",agent,re.I))
+            touch_hint=parse_qs(path.query).get("device")==["mobile"]
+            # Desktop-mode iPads share the Mac UA; a tiny gate detects touch
+            # before loading any application scripts, pets, charts or data.
+            if agent and not mobile_agent and not touch_hint:
+                name="device-entry.html" if re.search(r"Macintosh",agent,re.I) else "download.html"
+                return self.respond(200,version_html((ROOT/name).read_bytes(),ROOT,"/"+name),"text/html; charset=utf-8")
         if path.path in ("/", "/index.html", "/news.html"):
             page_ids = parse_qs(path.query, keep_blank_values=True).get("space")
             if page_ids is not None:
@@ -1674,7 +1683,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.respond(200, asset.read_bytes(), "image/png", cache_seconds=86400)
         if path.path == "/assets/pets/mascots-3d-v1.png":
             return self.respond(200, (ROOT / "assets/pets/mascots-3d-v1.png").read_bytes(), "image/png", cache_seconds=86400)
-        if path.path in ("/assets/data.js", "/assets/news-paper.js", "/assets/news-paper.css", "/assets/mobile-pages.js", "/assets/mobile-pages.css", "/assets/wallet.js", "/assets/wallet.css", "/assets/client-update.js", "/assets/download.css", "/assets/pets/personal-navigator-v1.png"):
+        if path.path in ("/assets/data.js", "/assets/news-paper.js", "/assets/news-paper.css", "/assets/mobile-pages.js", "/assets/mobile-pages.css", "/assets/wallet.js", "/assets/wallet.css", "/assets/client-update.js", "/assets/device-entry.js", "/assets/download.css", "/assets/pets/personal-navigator-v1.png"):
             asset = ROOT / path.path.lstrip("/")
             if asset.is_file():
                 mime = {".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".png": "image/png"}[asset.suffix]

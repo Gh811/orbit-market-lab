@@ -52,6 +52,20 @@ class MobileAssetTests(unittest.TestCase):
             self.assertIn(mime_part,mime)
             self.assertTrue(body)
 
+    def test_device_routing_keeps_desktop_downloads_separate_from_mobile(self):
+        cases=[('Mozilla/5.0 (Windows NT 10.0; Win64; x64)','/',b'download.css',b'assets/app.js'),
+               ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15)','/',b'device-entry.js',b'assets/app.js'),
+               ('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)','/',b'assets/app.js',b'authDownloadLink'),
+               ('Mozilla/5.0 (Linux; Android 13; Tablet)','/',b'assets/app.js',b'authDownloadLink'),
+               ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15)','/?device=mobile',b'assets/app.js',b'authDownloadLink'),
+               ('Mozilla/5.0 (Windows NT 10.0; Win64; x64)','/backtest/',b'download.css',b'backtest/app.js')]
+        for agent,path,present,absent in cases:
+            with self.subTest(agent=agent,path=path):
+                handler=object.__new__(server.Handler);handler.headers={'Host':'localhost','User-Agent':agent};handler.path=path
+                handler.respond=lambda status,body,mime='application/json',**kwargs:(status,body,mime)
+                status,body,mime=handler.do_GET()
+                self.assertEqual(status,200);self.assertIn(present,body);self.assertNotIn(absent,body)
+
     def test_unlisted_files_remain_private(self):
         for path in ['/assets/pets/../../server.py', '/.market_accounts.sqlite3', '/assets/pets/missing.png']:
             with self.subTest(path=path):
