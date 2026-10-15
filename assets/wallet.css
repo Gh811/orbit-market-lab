@@ -2,7 +2,7 @@
 #petHome .petHeadRight{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:8px;min-width:0}
 #petHome .petHeadRight .petStatus{display:none}
 #petHome .petHomeToolRows{display:grid;grid-template-columns:repeat(4,minmax(0,38px));grid-template-rows:54px 48px;gap:3px 3px;justify-content:end}
-#petHome .petHomeToolRows>button{min-width:0;width:100%;min-height:44px;margin:0;padding:2px;box-sizing:border-box;font-size:10px}
+#petHome .petHomeToolRows>:is(button,a){min-width:0;width:100%;min-height:44px;margin:0;padding:2px;box-sizing:border-box;font-size:10px}
 #petHome #petHomeSound{grid-column:4;grid-row:2}
 #petHome #petHomeWallet{grid-column:3;grid-row:2}
 #petHome .petHomeUtility{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:0;background:transparent;box-shadow:none;color:#cbe3eb;border-radius:10px}
@@ -53,7 +53,7 @@ html[data-device="phone"] #walletDialog,#walletDialog{inset:0;margin:0;padding:0
 /* Align the brand with the first tool row; account identity becomes a helmet badge. */
 #petHome .petHead{align-items:flex-start}
 #petHome .petHeadBrand,#petHome .petHeadRight{align-self:flex-start;margin-top:0}
-#petHome .petHomeToolRows>button{justify-content:flex-start;padding-top:0}
+#petHome .petHomeToolRows>:is(button,a){justify-content:flex-start;padding-top:0}
 #petHome .petHeadAccount.petAccountHelmetButton{position:relative;display:block;flex:none;width:56px;min-width:56px;max-width:56px;height:72px;min-height:72px;margin:0;padding:0;border:0;border-radius:0;background:transparent;color:#cce5ed;box-shadow:none;text-shadow:none;overflow:visible}
 #petHome .petHeadAccount.petAccountHelmetButton:before,#petHome .petHeadAccount.petAccountHelmetButton:after{display:none}
 #petHome .petAccountHelmet{position:relative;display:block;width:56px;height:67px}
@@ -229,7 +229,7 @@ body:has(dialog[open]) .petHelmetExhaust{animation-play-state:paused}
 @media(min-width:1180px){#walletDialog .walletHoldings{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(min-width:760px){
  #petHome .petHomeToolRows{grid-template-columns:repeat(4,minmax(0,46px));grid-template-rows:64px 56px;gap:4px}
- #petHome .petHomeToolRows>button{font-size:12px}
+ #petHome .petHomeToolRows>:is(button,a){font-size:12px}
  #petHome .petHomeUtility svg{width:40px;height:40px}
  #petHome #petHomeWallet svg{width:42px;height:42px}
  #petHome .petBrandBadge{flex-basis:65px;width:65px;height:86px}
@@ -245,3 +245,6 @@ body:has(dialog[open]) .petHelmetExhaust{animation-play-state:paused}
 #walletDialog .walletHistory polyline{fill:none;stroke:#dbbd7a;stroke-width:2;vector-effect:non-scaling-stroke}
 #walletDialog .walletHistoryValue{font-size:12px;color:#eadabb;overflow-wrap:anywhere}
 #walletDialog .walletPnlTotal{margin:4px 0;font-size:12px;color:#c9b68d}
+
+#petHome #petHomeDownload{grid-column:2;grid-row:2;text-decoration:none;color:#d5c18e}
+#authDialog .authDownloadLink{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;margin-top:14px;color:#d8c79f;font-size:13px;text-decoration:none;border:1px solid #b9cbd42e;border-radius:12px;background:#c9dfea09}
