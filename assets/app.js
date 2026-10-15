@@ -1571,9 +1571,10 @@ function renderAccount(){
 function setAccess(allowed){document.body.classList.toggle('authLocked',!allowed);
   if(!allowed){
     document.body.classList.add('accountOverlay');
+    if(window.MarketClientUpdate?.forced){if($('authDialog').open)$('authDialog').close();return}
     if(document.documentElement.classList.contains('bootLoading')&&window.MarketBoot?.whenEntered){
       // A modal makes the rest of the page inert even when invisible; keep the loader tappable.
-      if(!setAccess.pendingBootOpen){setAccess.pendingBootOpen=true;window.MarketBoot.whenEntered(()=>{setAccess.pendingBootOpen=false;if(!accountUser)openDetailDialog($('authDialog'),$('authUsername'))})}
+      if(!setAccess.pendingBootOpen){setAccess.pendingBootOpen=true;window.MarketBoot.whenEntered(()=>{setAccess.pendingBootOpen=false;if(!accountUser&&!window.MarketClientUpdate?.forced)openDetailDialog($('authDialog'),$('authUsername'))})}
     }else openDetailDialog($('authDialog'),$('authUsername'));
   }
   else {document.body.classList.remove('accountOverlay');if($('authDialog').open)$('authDialog').close()}}

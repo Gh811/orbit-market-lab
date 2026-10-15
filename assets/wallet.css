@@ -248,4 +248,4 @@ body:has(dialog[open]) .petHelmetExhaust{animation-play-state:paused}
 
 #petHome #petHomeDownload{grid-column:2;grid-row:2;text-decoration:none;color:#d5c18e}
 #authDialog .authDownloadLink{display:none}
-html[data-os="android"] #authDialog .authDownloadLink{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;margin-top:0;color:#d8c79f;font-size:13px;text-decoration:none;border:1px solid #b9cbd42e;border-radius:12px;background:#c9dfea09}
+html[data-os="android"]:not([data-client="apk"]) #authDialog .authDownloadLink{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;margin-top:0;color:#d8c79f;font-size:13px;text-decoration:none;border:1px solid #b9cbd42e;border-radius:12px;background:#c9dfea09}
