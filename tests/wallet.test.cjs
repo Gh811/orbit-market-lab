@@ -18,3 +18,5 @@ assert.equal(wallet.history(linked,[{t:Date.parse('2024-01-02'),c:66000}])[0].pn
 assert.equal(wallet.history(a,[{t:Date.parse('2024-01-02'),c:66000}]).length,0);
 assert.equal(wallet.normalize([{...linked,acquiredAt:'2024-02-31'}])[0].acquiredAt,undefined);
 console.log('Linked holdings: long valuation, no fabricated missing prices, acquisition date and confirmed daily history PASS');
+
+assert.equal(wallet.history(linked,[{t:Date.parse('2023-12-31T16:00:00Z'),c:66000}])[0].date,'2024-01-01','China-market daily bars are labeled by the market day, not the previous UTC day');
