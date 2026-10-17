@@ -2,6 +2,13 @@
 (()=>{'use strict';
   const root=document.documentElement;
   const mobileOnlyEntry=root.hasAttribute('data-orbit-entry');
+  if(mobileOnlyEntry&&window.history&&'scrollRestoration' in window.history)window.history.scrollRestoration='manual';
+  function settleEntryViewport(){
+    if(!mobileOnlyEntry||document.activeElement?.matches?.('input,textarea,select,[contenteditable="true"]'))return;
+    if((window.scrollX||0)!==0||(window.scrollY||0)!==0)window.scrollTo?.(0,0);
+    lockPhoneStyles();
+  }
+
   const detectedTablet=/iPad/i.test(navigator.userAgent||'')||(/Macintosh/i.test(navigator.userAgent||'')&&(navigator.maxTouchPoints||0)>0);
   const detectedPhone=!detectedTablet&&(/Android.*Mobile|iPhone|iPod/i.test(navigator.userAgent||'')||navigator.userAgentData?.mobile===true||((navigator.maxTouchPoints||0)>0&&window.matchMedia('(pointer:coarse)').matches&&Math.min(screen.width,screen.height)<=720));
   // The main entry now always loads the mobile application, including wide windows.
@@ -74,6 +81,8 @@
     setViewportValue('--phone-layout-height',portrait.height+'px');
     wallpaperHeight=Math.max(wallpaperHeight,window.innerHeight,view.height+(view.offsetTop||0),portrait.height,screenWallpaperHeight);
     setViewportValue('--wallpaper-viewport-height',wallpaperHeight+'px');
+    const surfaceHeight=Math.max(window.innerHeight||0,document.documentElement.clientHeight||0,(window.visualViewport?.height||0)+(window.visualViewport?.offsetTop||0));
+    setViewportValue('--mobile-surface-height',surfaceHeight+'px');
     setViewportValue('--mobile-viewport-height',portrait.height+'px');
   }
   const schedulePhoneStyles=()=>{if(!window.requestAnimationFrame){lockPhoneStyles();return}if(viewportFrame)return;viewportFrame=window.requestAnimationFrame(()=>{viewportFrame=0;lockPhoneStyles()})};
@@ -84,7 +93,8 @@
   screen.orientation?.addEventListener?.('change',lockPhoneStyles);
   window.visualViewport?.addEventListener('resize',schedulePhoneStyles,{passive:true});
   window.visualViewport?.addEventListener('scroll',schedulePhoneStyles,{passive:true});
-  window.addEventListener('pageshow',lockPhoneStyles,{passive:true});
+  window.addEventListener('pageshow',()=>{settleEntryViewport();const frame=window.requestAnimationFrame;if(frame)frame(()=>frame(settleEntryViewport))},{passive:true});
+  window.addEventListener('load',settleEntryViewport,{passive:true});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)lockPhoneStyles()});
   lockPhoneStyles();
   // Inline HTML guard protects even the first frame before external CSS arrives.
@@ -102,7 +112,7 @@
   if(!root.hasAttribute('data-orbit-entry')||!isMobile())return;
   root.classList.add('bootLoading');
   let value=6,target=12,accountReady=false,domReady=false,failed=false,finished=false,failureMessage='',timedOut=false,visualReady=false,preparing=false,prepareVisuals=null;
-  let visualAttempts=0,failurePhase='',watchdog;
+  let visualAttempts=0,loginOnly=false,failurePhase='',watchdog;
   const resourceAttempts=new WeakMap(),scheduledResources=new WeakSet(),failedResources=new Set();
   const start=Date.now();
   const $=id=>document.getElementById(id);
@@ -129,7 +139,7 @@
       if(preparing)return;preparing=true;
       stage('正在准备启动资源…','初始化首屏布局、个人形象与交互音效',50);
       let preparationTimer;
-      const deadline=new Promise((_,reject)=>{preparationTimer=setTimeout(()=>reject(new Error('启动资源等待超时')),45000)});
+      const deadline=new Promise((_,reject)=>{preparationTimer=setTimeout(()=>reject(new Error('启动资源等待超时')),120000)});
       Promise.race([Promise.resolve().then(prepareVisuals),deadline]).then(()=>{
         clearTimeout(preparationTimer);
         // Lay out the real page behind the still-opaque cover before exposing it.
@@ -148,11 +158,11 @@
       return;
     }
     target=Math.max(target,96);
-    if(Date.now()-start<2800||value<95.5)return;
+    if(Date.now()-start<(loginOnly?0:2800)||value<95.5)return;
     finished=true;failed=false;timedOut=false;if($('bootRetry'))$('bootRetry').hidden=true;clearInterval(tick);clearTimeout(watchdog);value=100;paint();
     if($('bootStatus'))$('bootStatus').textContent='首屏已就绪，即将进入';
     if($('bootDetails'))$('bootDetails').textContent=fixedDetailLines(steps.filter(step=>step.startsWith('✓')).slice(-5).concat('✓ 首屏资源与布局准备完成'));
-    setTimeout(()=>{const shell=document.querySelector('[data-entry-shell]');if(shell)shell.hidden=false;root.classList.add('bootComplete');root.classList.remove('bootLoading');$('bootCover')?.setAttribute('hidden','');for(const callback of entryListeners.splice(0)){try{callback()}catch{}}},700);
+    setTimeout(()=>{const shell=document.querySelector('[data-entry-shell]');if(shell)shell.hidden=false;root.classList.add('bootComplete');root.classList.remove('bootLoading');$('bootCover')?.setAttribute('hidden','');for(const callback of entryListeners.splice(0)){try{callback()}catch{}}},loginOnly?0:700);
   }
   function fail(message,{exhausted=true,phase='account'}={}){
     if(finished)return;failed=true;timedOut=exhausted;failurePhase=phase;failureMessage=message||'连接有点慢，正在重试';if($('bootStatus'))$('bootStatus').textContent=failureMessage;
@@ -199,7 +209,7 @@
     if(failed&&$('bootStatus'))$('bootStatus').textContent=failureMessage;
     paint();finish();
   });
-  window.MarketBoot={stage,whenEntered(callback){if(root.classList.contains('bootComplete'))callback();else entryListeners.push(callback)},ready(prepare){if(prepare)prepareVisuals=prepare;accountReady=true;if(failurePhase!=='resource'||!failedResources.size){failed=false;timedOut=false;if($('bootRetry'))$('bootRetry').hidden=true}stage('账户已连接，正在准备资源…','✓ 账户服务与个人设置已恢复',50);finish()},fail};
+  window.MarketBoot={stage,whenEntered(callback){if(root.classList.contains('bootComplete'))callback();else entryListeners.push(callback)},ready(prepare,options={}){loginOnly=!!options.guest;if(loginOnly){value=96;target=96}if(prepare)prepareVisuals=prepare;accountReady=true;if(failurePhase!=='resource'||!failedResources.size){failed=false;timedOut=false;if($('bootRetry'))$('bootRetry').hidden=true}stage('账户已连接，正在准备资源…','✓ 账户服务与个人设置已恢复',50);finish()},fail};
 })();
 
 // Set the palette before the stylesheet paints, then build the mechanical

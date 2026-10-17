@@ -1,5 +1,8 @@
 package com.orbit.market;
 import android.app.Activity;
+import java.io.*;
+import org.json.JSONObject;
+import java.util.Collections;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.graphics.Color;
@@ -19,12 +22,14 @@ import android.widget.TextView;
 public class MainActivity extends Activity {
  private WebView web;
  private FrameLayout frame;
+ private JSONObject localAssets;
  private View customView;
  private WebChromeClient.CustomViewCallback customCallback;
  private static final String HOME="https://myok888.top/";
  private boolean trusted(Uri uri){return "https".equals(uri.getScheme())&&"myok888.top".equals(uri.getHost())&&(uri.getPort()==-1||uri.getPort()==443);}
  @Override public void onCreate(Bundle state){
   super.onCreate(state);
+  try(InputStream in=getAssets().open("asset-manifest.json");ByteArrayOutputStream out=new ByteArrayOutputStream()){byte[] chunk=new byte[8192];int n;while((n=in.read(chunk))!=-1)out.write(chunk,0,n);localAssets=new JSONObject(out.toString("UTF-8"));}catch(Exception ignored){localAssets=null;}
   frame=new FrameLayout(this);frame.setBackgroundColor(Color.rgb(38,60,88));setContentView(frame);
   web=new WebView(this);web.setBackgroundColor(Color.rgb(38,60,88));frame.addView(web,new FrameLayout.LayoutParams(-1,-1));
   // Native container consumes safe insets, so the WebView does not pad them twice.
@@ -34,9 +39,19 @@ public class MainActivity extends Activity {
     return new WindowInsets.Builder(insets).setInsets(WindowInsets.Type.systemBars()|WindowInsets.Type.displayCutout()|WindowInsets.Type.ime(),android.graphics.Insets.NONE).build();
    });frame.requestApplyInsets();
   }else frame.setFitsSystemWindows(true);
-  WebSettings settings=web.getSettings();settings.setJavaScriptEnabled(true);settings.setDomStorageEnabled(true);settings.setAllowFileAccess(false);settings.setAllowContentAccess(false);settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);settings.setMediaPlaybackRequiresUserGesture(true);settings.setUserAgentString(settings.getUserAgentString()+" OrbitAndroid/1.0.0");
+  WebSettings settings=web.getSettings();settings.setJavaScriptEnabled(true);settings.setDomStorageEnabled(true);settings.setAllowFileAccess(false);settings.setAllowContentAccess(false);settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);settings.setMediaPlaybackRequiresUserGesture(true);settings.setUserAgentString(settings.getUserAgentString()+" OrbitAndroid/1.1.0");
   CookieManager.getInstance().setAcceptCookie(true);CookieManager.getInstance().setAcceptThirdPartyCookies(web,false);
   web.setWebViewClient(new WebViewClient(){
+   @Override public WebResourceResponse shouldInterceptRequest(WebView view,WebResourceRequest request){
+    Uri uri=request.getUrl();String path=uri.getPath();
+    if(!"GET".equals(request.getMethod())||!trusted(uri)||path==null||!path.startsWith("/assets/")||path.contains("..")||localAssets==null||!localAssets.has(path))return null;
+    String revision=uri.getQueryParameter("v");
+    // Content hashes ensure changed server resources never reuse the bundled old file.
+    if(revision!=null&&!revision.equals(localAssets.optString(path))&&(localAssets.optJSONObject("_versionAliases")==null||!localAssets.optJSONObject("_versionAliases").optBoolean(revision,false)))return null;
+    try{String ext=MimeTypeMap.getFileExtensionFromUrl(path),mime=MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext);if("js".equals(ext))mime="application/javascript";if(mime==null)mime="application/octet-stream";
+     return new WebResourceResponse(mime,("css".equals(ext)||"js".equals(ext)||"svg".equals(ext))?"UTF-8":null,200,"OK",Collections.singletonMap("Cache-Control","no-cache"),getAssets().open(path.substring(1)));
+    }catch(IOException ignored){return null;}
+   }
    @Override public boolean shouldOverrideUrlLoading(WebView view,WebResourceRequest request){Uri uri=request.getUrl();if(trusted(uri))return false;if(request.isForMainFrame()&&("https".equals(uri.getScheme())||"http".equals(uri.getScheme())))try{startActivity(new Intent(Intent.ACTION_VIEW,uri));}catch(Exception ignored){}return true;}
    @Override public void onPageFinished(WebView view,String url){CookieManager.getInstance().flush();if(trusted(Uri.parse(url)))view.evaluateJavascript("document.documentElement.classList.add('orbitAndroid');",null);}
    @Override public void onReceivedError(WebView view,WebResourceRequest request,WebResourceError error){if(request.isForMainFrame())showRetry();}

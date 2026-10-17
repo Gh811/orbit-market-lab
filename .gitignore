@@ -41,3 +41,8 @@ android/build/
 *.jks
 *.keystore
 *.apk
+
+# Administrator credentials and offline IP database are deployment-local.
+admin-credentials.json
+ip-region/
+*.xdb

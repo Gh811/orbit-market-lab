@@ -14,7 +14,9 @@ import sys
 import threading
 import time
 import xml.etree.ElementTree as ET
-from accounts import AccountStore, SESSION_SECONDS, StateConflict
+from accounts import AccountStore, SESSION_SECONDS, StateConflict, AccountBanned
+import admin_portal
+import ip_region
 from asset_data_pipeline import AssetDataPipeline
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
@@ -1525,6 +1527,10 @@ class Handler(BaseHTTPRequestHandler):
         return (f"star_session={token}; Path=/; HttpOnly; SameSite=Lax; "
                 f"Max-Age={0 if clear else SESSION_SECONDS}{secure}")
 
+    def account_region(self,user):
+        ip=ip_region.client_ip(self.client_address[0],self.headers)
+        return accounts().record_region(user['id'],ip_region.lookup(ip,ACCOUNT_DB))
+
     def require_current_client(self):
         required=required_client_release()
         if not required or self.headers.get("X-Orbit-Release")==required:return False
@@ -1535,6 +1541,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.headers.get("Host", "").split(":")[0].lower() not in ALLOWED_HOSTS:
             return self.respond(403, {"error": "只允许本机访问"})
         path = urlsplit(self.path).path
+        if path.startswith("/api/admin/") and admin_portal.handle(self,accounts(),ROOT,path):return
         if path not in ("/api/auth/register", "/api/auth/login", "/api/auth/logout", "/api/auth/password", "/api/auth/avatar", "/api/user/state", "/api/asset-discovery", "/api/backtest/jobs"):
             return self.respond(404, {"error": "未找到"})
         if path!="/api/auth/logout" and self.require_current_client():return
@@ -1574,10 +1581,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self.respond(401, {"error": "请先登录"})
             key = f"password:{user['id']}"
             with ACCOUNT_LOCK:
-                failures = [stamp for stamp in LOGIN_FAILURES.get(key, []) if time.time() - stamp < 900]
+                failures = [stamp for stamp in LOGIN_FAILURES.get(key, []) if time.time() - stamp < 60]
                 LOGIN_FAILURES[key] = failures
                 if len(failures) >= 8:
-                    return self.respond(429, {"error": "尝试次数过多，请 15 分钟后重试"})
+                    return self.respond(429, {"error": "尝试次数过多，请 1 分钟后重试"})
             try:
                 accounts().change_password(user["id"], body.get("currentPassword"), body.get("newPassword"), token)
             except ValueError as exc:
@@ -1619,14 +1626,18 @@ class Handler(BaseHTTPRequestHandler):
             return self.respond(200, {"state": state, "stateUpdated": accounts().session(token)["stateUpdated"]})
         username, password = body.get("username"), body.get("password")
         if path == "/api/auth/login":
+            if admin_portal.is_admin_name(accounts(),username):
+                return self.respond(200,{"adminRedirect":"/admin"})
             key = str(username).casefold()[:32]
             with ACCOUNT_LOCK:
-                failures = [stamp for stamp in LOGIN_FAILURES.get(key, []) if time.time() - stamp < 900]
+                failures = [stamp for stamp in LOGIN_FAILURES.get(key, []) if time.time() - stamp < 60]
                 LOGIN_FAILURES[key] = failures
                 if len(failures) >= 8:
-                    return self.respond(429, {"error": "尝试次数过多，请 15 分钟后重试"})
+                    return self.respond(429, {"error": "尝试次数过多，请 1 分钟后重试"})
             try:
                 user, new_token = accounts().login(username, password)
+            except AccountBanned as exc:
+                return self.respond(403,{"error":str(exc),"accountBanned":True})
             except ValueError:
                 with ACCOUNT_LOCK:
                     LOGIN_FAILURES.setdefault(key, []).append(time.time())
@@ -1638,13 +1649,15 @@ class Handler(BaseHTTPRequestHandler):
                 user, new_token = accounts().register(username, password, body.get("avatarKind", 0))
             except ValueError as exc:
                 return self.respond(400, {"error": str(exc)})
-        return self.respond(200, {key: user[key] for key in ("username", "userId", "spaceId", "state", "stateUpdated", "avatarKind", "avatarChangedDay", "avatarCanChange")},
+        user["ipRegion"]=self.account_region(user)
+        return self.respond(200, {key: user[key] for key in ("username", "userId", "spaceId", "state", "stateUpdated", "avatarKind", "avatarChangedDay", "avatarCanChange", "ipRegion")},
                             cookie=self.auth_cookie(new_token))
 
     def do_GET(self):
         if self.headers.get("Host", "").split(":")[0].lower() not in ALLOWED_HOSTS:
             return self.respond(403, {"error": "只允许本机访问"})
         path = urlsplit(self.path)
+        if (path.path in ("/admin","/admin/","/assets/admin.js","/assets/admin.css","/assets/admin-control.svg","/assets/admin.webmanifest","/assets/admin-icon-180.png","/assets/admin-icon-192.png","/assets/admin-icon-512.png") or path.path.startswith("/api/admin/")) and admin_portal.handle(self,accounts(),ROOT,path.path):return
         if path.path in ("/", "/index.html", "/news.html", "/backtest/", "/backtest/index.html"):
             agent=self.headers.get("User-Agent","")
             apple_agent=bool(re.search(r"iPhone|iPod|iPad",agent,re.I))
@@ -1733,10 +1746,11 @@ class Handler(BaseHTTPRequestHandler):
         if path.path.startswith("/api/") and path.path not in ("/api/logo","/api/logo-image") and self.require_current_client():return
         if path.path == "/api/auth/session":
             user = accounts().session(self.session_token())
+            if user:user["ipRegion"]=self.account_region(user)
             return self.respond(200, {"username": user["username"], "state": user["state"],
                                       "spaceId": user["spaceId"], "userId": user["userId"],
                                       "stateUpdated": user["stateUpdated"], "avatarKind": user["avatarKind"],
-                                      "avatarChangedDay": user["avatarChangedDay"], "avatarCanChange": user["avatarCanChange"]} if user
+                                      "avatarChangedDay": user["avatarChangedDay"], "avatarCanChange": user["avatarCanChange"], "ipRegion":user["ipRegion"]} if user
                                 else {"username": None, "state": None})
         if path.path.startswith("/api/") and path.path != "/api/status" and not accounts().session(self.session_token()):
             return self.respond(401, {"error": "请先登录"})

@@ -72,7 +72,7 @@
       // 登录仍由原有账户锁控制，返回不会授予任何数据权限。
       dialog.close();return;
     }
-    if($('petManager')&&!$('petManager').hidden){actions.closeManager?.();return}
+    if($('petManager')&&!$('petManager').hidden){if(actions.canLeaveManager?.()!==false)actions.closeManager?.();return}
     if($('petDeck')?.classList.contains('deckChartMode'))actions.closeChart?.();
     else if($('petDeck')&&!$('petDeck').hidden)actions.closeDeck?.();
   }
@@ -81,7 +81,7 @@
     const state=history.state?.[navKey];
     if(state?.token===token&&state.depth>0){
       backPending=true;homeReturnPending=true;history.go(-state.depth);
-    }else{applyRoute({kind:'home'});history.replaceState(stateFor({kind:'home'},0),'')}
+    }else{if(applyRoute({kind:'home'})!==false)history.replaceState(stateFor({kind:'home'},0),'')}
   }
   function back(){
     if(applying||backPending)return;
@@ -92,7 +92,7 @@
     const state=history.state?.[navKey];
     if(state?.token===token&&state.depth>0){
       backPending=true;parentReturnPending=parent;history.back();
-    }else{applyRoute(parent);history.replaceState(stateFor(parent,0),'')}
+    }else{if(applyRoute(parent)!==false)history.replaceState(stateFor(parent,0),'')}
   }
   // Close an embedded page without navigating or replacing the parent document.
   function closeLocalDialog(dialog){
@@ -154,6 +154,8 @@
     if(target.kind==='chart')actions.openChart?.();else actions.closeChart?.();
   }
   function applyRoute(target){
+    const manager=$('petManager'),destination=target.kind==='dialog'?target.source:target;
+    if(manager&&!manager.hidden&&(!destination||destination.kind!=='manager'||destination.group!==manager.dataset.groupId)&&actions.canLeaveManager?.()===false)return false;
     applying=true;
     for(const dialog of [...dialogStack].reverse())if(dialog.open&&(target.kind!=='dialog'||dialog.id!==target.id))dialog.close();
     if(target.kind==='dialog'){
@@ -167,9 +169,9 @@
       if(target.id==='mobileMoreDialog')setMorePage(target.sub||'menu');
       if(target.id==='petNewsDialog'&&$('petNewsPicker')){const picker=target.sub==='picker';$('petNewsPicker').hidden=!picker;$('petNewsList').hidden=picker;$('petNewsSearchButton').hidden=picker;}
     }else applySurface(target);
-    setTimeout(()=>{applying=false;remember(true)},0);
+    setTimeout(()=>{applying=false;remember(true)},0);return true;
   }
-  window.addEventListener('popstate',e=>{backPending=false;const state=e.state?.[navKey];if(mobile()&&state?.token===token){const home=homeReturnPending,parent=parentReturnPending;homeReturnPending=false;parentReturnPending=null;const target=home?{kind:'home'}:parent||state.route;if(home||parent)history.replaceState(stateFor(target,home?0:state.depth),'');applyRoute(target)}});
+  window.addEventListener('popstate',e=>{backPending=false;const state=e.state?.[navKey];if(mobile()&&state?.token===token){const home=homeReturnPending,parent=parentReturnPending;homeReturnPending=false;parentReturnPending=null;const target=home?{kind:'home'}:parent||state.route;if(home||parent)history.replaceState(stateFor(target,home?0:state.depth),'');if(applyRoute(target)===false)history.pushState(stateFor(route(),state.depth+1),'')}});
   document.addEventListener('click',e=>{
     if(!mobile())return;
     if(performance.now()<swallowClickUntil){e.preventDefault();e.stopImmediatePropagation();return}
@@ -187,13 +189,18 @@
       const node=record.target;
       if(node===document.body||['petHome','petDeck','petManager','petNewsPicker'].includes(node.id))routeChanged=true;
       if(node instanceof HTMLDialogElement&&record.attributeName==='open'){
+        if(node.open||topDialog())document.body.classList.add('mobileModalOpen');else document.body.classList.remove('mobileModalOpen');
         if(node.id==='requiredUpdateDialog')continue;
         routeChanged=true;
         if(node.open){const i=dialogStack.indexOf(node);if(i>=0)dialogStack.splice(i,1);dialogStack.push(node);if(mobile())activateDialog(node)}
         else{const i=dialogStack.indexOf(node);if(i>=0)dialogStack.splice(i,1);if(node.id==='mobileMoreDialog')resetMore();if(node.id==='mobilePasswordPage')restorePassword()}
       }
     }
-    if(routeChanged&&mobile())remember();
+    if(routeChanged&&mobile()){
+      const top=topDialog();
+      for(const page of dialogStack)if(page.open)page.classList[top&&page!==top?'add':'remove']('mobileUnderlay');
+      remember();
+    }
   }).observe(document.body,{subtree:true,attributes:true,attributeFilter:['open','hidden','class']});
   document.addEventListener('reset',e=>{if(e.target.id==='passwordForm'&&$('mobilePasswordPage')?.open)$('mobilePasswordPage').close()},true);
   // 手机浏览器的原生返回使用 popstate；其他设备补充左边缘右滑。

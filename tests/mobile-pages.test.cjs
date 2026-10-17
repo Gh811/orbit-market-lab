@@ -5,10 +5,11 @@ const vm=require('node:vm');
 const listeners=new Map(),documentListeners=new Map(),entries=[];
 let cursor=-1,observer,chart=false;
 const deck={hidden:true,dataset:{groupId:'main'},classList:{contains:()=>chart}};
-class Dialog{constructor(){this.id='infoDialog';this.open=false;this.classList={contains:()=>false}}querySelector(){return {}}close(){this.open=false}}
+class Dialog{constructor(){this.id='infoDialog';this.open=false;this.classList={contains:()=>false,add(){},remove(){}}}querySelector(){return {}}close(){this.open=false}}
 const info=new Dialog();
 const manager={hidden:true,dataset:{groupId:'main'}};let draft=null;
-const document={body:{},getElementById:id=>id==='petDeck'?deck:id==='infoDialog'?info:id==='petManager'?manager:null,querySelectorAll:()=>[],addEventListener(name,callback){documentListeners.set(name,callback)}};
+const bodyClasses=new Set();
+const document={body:{classList:{add:name=>bodyClasses.add(name),remove:name=>bodyClasses.delete(name)}},getElementById:id=>id==='petDeck'?deck:id==='infoDialog'?info:id==='petManager'?manager:null,querySelectorAll:()=>[],addEventListener(name,callback){documentListeners.set(name,callback)}};
 const context={innerWidth:428,document,HTMLDialogElement:Dialog,Element:class{},setTimeout,clearTimeout,performance,Math,JSON};
 context.window=context;
 context.addEventListener=(name,callback)=>listeners.set(name,callback);

@@ -245,3 +245,17 @@ body:has(dialog[open]) .petHelmetExhaust{animation-play-state:paused}
 #walletDialog .walletHistory polyline{fill:none;stroke:#dbbd7a;stroke-width:2;vector-effect:non-scaling-stroke}
 #walletDialog .walletHistoryValue{font-size:12px;color:#eadabb;overflow-wrap:anywhere}
 #walletDialog .walletPnlTotal{margin:4px 0;font-size:12px;color:#c9b68d}
+
+#walletDialog .walletOverview{min-height:0;padding-top:18px;padding-bottom:16px}
+#walletDialog :is(.walletEyebrow,.walletAccessStrip,.walletVaultSubtitle,.walletCardFooter){display:none}
+#walletDialog .walletHistoryValue{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 0 4px}
+#walletDialog .walletHistoryValue time{font-size:12px;color:#b9aa8a}
+#walletDialog .walletHistoryValue strong{font-size:20px;font-variant-numeric:tabular-nums}
+#walletDialog .walletHistoryViewport{overflow-x:auto;overflow-y:hidden;max-width:100%;touch-action:pan-x pan-y;overscroll-behavior-x:contain;scrollbar-width:none}
+#walletDialog .walletHistoryViewport::-webkit-scrollbar{display:none}
+#walletDialog .walletHistoryViewport svg{max-width:none;height:110px;margin:0;touch-action:pan-x pan-y}
+#walletDialog .walletCardBrand{margin:0 0 12px}
+#walletDialog .walletCardBrand h1{font-size:20px;margin:0}
+#walletDialog .walletPrivacyToolbar{margin-bottom:10px}
+#walletDialog .walletTotals{gap:6px}
+#walletDialog .walletHolding dl{margin-top:12px;gap:8px}

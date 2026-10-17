@@ -5,9 +5,10 @@ html.clientUpdateRequired #requiredUpdateDialog,html.clientUpdateRequired #requi
 #requiredUpdateDialog[open]{display:grid;place-items:center}#requiredUpdateDialog::backdrop{background:#263c58}
 #requiredUpdateDialog .requiredUpdateCard{box-sizing:border-box;width:min(100%,360px);padding:12px;text-align:center}
 #requiredUpdateDialog .requiredUpdateCompanion{display:block;object-fit:contain;width:clamp(80px,22vh,160px);height:clamp(80px,22vh,160px);margin:0 auto 20px;filter:drop-shadow(0 12px 20px #11233855)}
-#requiredUpdateDialog small{display:block;font-size:10px;letter-spacing:.06em;color:#c0cedd}#requiredUpdateDialog h2{font-size:24px;font-weight:500;margin:14px 0 22px}
-#requiredUpdateDialog p{font-size:13px;line-height:1.8;color:#d4dfe9}#requiredUpdateDialog .requiredUpdateVersion{font-size:10px;color:#b6c5d5;overflow-wrap:anywhere}
-#requiredUpdateDialog .requiredUpdateTrack{height:5px;width:76%;margin:0 auto 24px;border-radius:10px;background:#d4e8ff20;overflow:hidden}
-#requiredUpdateDialog .requiredUpdateTrack span{display:block;width:100%;height:100%;background:linear-gradient(90deg,#a9dbe6,#dacaf4,#f0d3a1)}
+#requiredUpdateDialog h2{font-size:24px;font-weight:500;margin:14px 0 22px}
 #requiredUpdateDialog button{width:100%;min-height:48px;margin:18px 0;padding:12px;border:1px solid #f1dcad66;border-radius:12px;background:linear-gradient(120deg,#e4cea0,#b28f50);color:#17283a;font-size:16px;font-weight:600}
 #requiredUpdateDialog button:disabled{opacity:.7}
+
+html.clientUpdateRequired,html.clientUpdateRequired body{background-color:#263c58!important;overscroll-behavior:none}
+#requiredUpdateDialog::backdrop{position:fixed;inset:-100vh;background:#263c58 url('/assets/icons/crypto/crystalbg.png') center/cover no-repeat}
+#requiredUpdateDialog:before{content:'';position:fixed;inset:-256px;z-index:-1;pointer-events:none;background:linear-gradient(180deg,#162c4666,#1c355477),url('/assets/icons/crypto/crystalbg.png') center/cover no-repeat #263c58}

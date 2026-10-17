@@ -2,7 +2,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('nod
 const source=fs.readFileSync('assets/app.js','utf8');
 const events={},card={dataset:{},style:{},classList:{add(){},remove(){}}},stage={clientWidth:350,addEventListener:(type,fn)=>events[type]=fn,setPointerCapture(){}};
 let now=0,flips=[],positions=[];
-const ctx={$:id=>id==='deckStage'?stage:card,deckChartMoved:[],performance:{now:()=>now},deckTransition:0,setTimeout(){},deckSlideTransform:x=>(positions.push(x),String(x)),deckNeighborReveal(){},flipDeck:dir=>flips.push(dir)};
+const ctx={requestAnimationFrame:()=>1,cancelAnimationFrame(){},$:id=>id==='deckStage'?stage:card,deckChartMoved:[],performance:{now:()=>now},deckTransition:0,setTimeout(){},deckSlideTransform:x=>(positions.push(x),String(x)),deckNeighborReveal(){},flipDeck:dir=>flips.push(dir)};
 vm.createContext(ctx);vm.runInContext(source.slice(source.indexOf('function wireDeckStage()'),source.indexOf('function buildDeckShell()')),ctx);ctx.wireDeckStage();
 function swipe(dx,duration){card.dataset.busy='';events.pointerdown({target:{closest:()=>null},isPrimary:true,pointerId:1,clientX:200,clientY:200});now+=duration;events.pointermove({pointerId:1,clientX:200+dx,clientY:200});events.pointerup({pointerId:1});}
 swipe(-30,10);assert.equal(flips.length,0,'quick short swipe stays on current card');swipe(-100,200);assert.equal(flips.length,0,'below 32 percent remains');swipe(-120,500);assert.deepEqual(flips,[1]);assert.ok(positions.includes(-98.39999999999999)||positions.includes(-98.4),'finger movement is resisted');swipe(120,500);assert.deepEqual(flips,[1,-1]);

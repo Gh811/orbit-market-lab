@@ -69,7 +69,7 @@ let selected=(saved.selected||'').startsWith('ashare:')?saved.selected:'swap:'+(
 let toggles=saved.toggles||{volume:true,levels:true,fib:true,ma:true};
 let targets=saved.targets||{};
 let walletHoldings=window.MarketWallet?.normalize(saved.wallet)||(Array.isArray(saved.wallet)?saved.wallet:[]);
-let accountUser=null,accountId=null,accountSpace='',accountSaveTimer=null,accountSaveChain=Promise.resolve(true),authMode='login';
+let accountUser=null,accountId=null,accountRegion='未知',accountSpace='',accountSaveTimer=null,accountSaveChain=Promise.resolve(true),authMode='login';
 let registrationPetKind=0,companionWarmScheduled=false;
 let accountAvatarKind=0,accountAvatarChoice=0,accountAvatarCanChange=true,accountAvatarBusy=false;
 let accountRevision=0,accountBase=null,accountDirty=false,accountChecking=false;
@@ -454,7 +454,7 @@ $('heroLogo').replaceChildren();
 $('heroLogo').disabled=true;
 $('newsLink').href='/news.html';
 renderNewsPreview(null);
-return}let q=quotes[assetId(a)],last=candles.at(-1),p=q?.p||last?.c,base=q?.base||candles.at(-2)?.c;
+return}let q=quotes[assetId(a)],last=candles.at(-1),p=resolveMarketPrice(a,tf,candles).value,base=q?.base||candles.at(-2)?.c;
 $('newsLink').href='/news.html?type='+a.type+'&symbol='+encodeURIComponent(a.symbol);
 let pct=p&&base?(p/base-1)*100:null;
 let c=colors();
@@ -628,7 +628,7 @@ function setRR(node,value,entry,takeProfit,stopLoss){
   }
   node.className=Number.isFinite(value)?'rrTier '+(value>=50?'rr50':value>=20?'rr20':value>=10?'rr10':'rrBase'):'';
 }
-function miniChart(canvas,rows,offset=null){let dpr=window.devicePixelRatio||1,w=canvas.clientWidth||80,h=canvas.clientHeight||37;
+function miniChart(canvas,rows,offset=null){let dpr=Math.min(window.devicePixelRatio||1,2),w=canvas.clientWidth||80,h=canvas.clientHeight||37;
 canvas.width=Math.round(w*dpr);
 canvas.height=Math.round(h*dpr);
 let g=canvas.getContext('2d');
@@ -829,7 +829,8 @@ function confirmGroupAction(title,message,confirmLabel,danger=false,options={}){
       dialog.close();
       resolve(approved);
     };
-    accept.onclick=()=>{
+    accept.onclick=event=>{
+      event.preventDefault();event.stopPropagation();window.MarketPhysics?.unlockAudio?.();
       const error=options.validate?.($('groupConfirmMoveCheck').checked);
       if(error){$('groupConfirmError').textContent=error;return}
       finish(true);
@@ -1554,6 +1555,7 @@ window.addEventListener('orbit:force-update',()=>{
   $('authError').textContent='版本已更新，请先完成更新后重新登录';
 });
 function renderAccount(){
+  if($('accountIpRegion'))$('accountIpRegion').textContent=accountRegion;
   $('authDialog').classList.toggle('accountSignedView',!!accountUser);
   const version=$('accountVersion'),release=document.querySelector('meta[name="orbit-release"]')?.content||'development';if(version){version.textContent=release==='development'?'版本 · 开发中':'版本 '+release.replace(/^orbit-(\d{4})(\d{2})(\d{2})-/,'$1.$2.$3 · ');version.title=release}
   $('authDialog').classList.remove('mobilePasswordView');
@@ -1586,7 +1588,7 @@ function defaultAccountState(){return {assets:[
   selected:'swap:BTC',tf:'1d',scheme:'redUp',swing:1,
   toggles:{volume:true,levels:true,fib:true,ma:true},targets:{},wallet:[]}}
 function restoreAccount(result){
-  accountUser=result.username;accountId=result.userId;accountSpace=result.spaceId||result.username;
+  accountUser=result.username;accountId=result.userId;accountRegion=result.ipRegion||'未知';accountSpace=result.spaceId||result.username;
   accountRevision=Number(result.stateUpdated)||0;
   localStorage.removeItem(STORE);
   const pageUrl=new URL(location.href);pageUrl.searchParams.set('space',accountSpace);
@@ -1627,6 +1629,7 @@ async function refreshAccount(){
   try{const result=await api('/api/auth/session');
     if(!result.username){clearAccountView();return}
     if(result.username!==accountUser||result.spaceId!==accountSpace){restoreAccount(result);return}
+    accountRegion=result.ipRegion||'未知';if($('accountIpRegion'))$('accountIpRegion').textContent=accountRegion;
     applyAvatarProfile(result);
     const revision=Number(result.stateUpdated)||0;
     if(revision>accountRevision&&result.state&&!accountDirty){
@@ -1663,7 +1666,8 @@ function afterMobileEntry(callback){
   const run=()=>{if(!accountUser||owner!==accountSpace)return;if(document.documentElement.classList.contains('bootLoading')){setTimeout(run,250);return}callback()};run();
 }
 async function prepareMobileEntryVisuals(){
-  const status=(message,detail,progress)=>window.MarketBoot?.stage?.(message,detail,progress);
+  const status=(message,detail,progress)=>{window.MarketBoot?.stage?.(message,detail,progress);if(document.documentElement?.dataset?.loadingAccount==='true'){if($('bootStatus'))$('bootStatus').textContent=message;if(Number.isFinite(progress)&&$('bootProgressFill'))$('bootProgressFill').style.width=progress+'%';if(Number.isFinite(progress)&&$('bootPercent'))$('bootPercent').textContent=progress+'%'}};
+  if(accountUser){
   status('正在初始化音效引擎…','准备滑动、卡兜与伙伴操作音效');
   if(typeof window.MarketPhysics?.prepareAudio!=='function')throw new Error('音效组件尚未加载，请重新加载');
   if(typeof window.MarketNewsPaper?.create!=='function')throw new Error('新闻组件尚未加载，请重新加载');
@@ -1672,26 +1676,28 @@ async function prepareMobileEntryVisuals(){
   const audio=window.MarketPhysics.prepareAudio();
   if(audio.supported&&!audio.prepared)throw new Error('音效资源尚未准备完整，请重新加载');
   status('音效资源已准备…',audio.supported?'✓ 滑动与操作音效已预生成':'当前浏览器不支持音效',52);
-  if(accountUser){
     status('正在同步首屏卡组…','恢复自选卡组与热门榜单');
     await Promise.all([loadDailyHot(),loadCatalog()]);
     if(!assets.some(a=>a.groupId===HOT_GROUP_ID))throw new Error('热门卡组尚未加载');
     if(!instrumentCatalog?.some(a=>a.type==='ashare'))throw new Error('标的目录尚未加载，请重新加载');
     status('首屏卡组与目录已同步','✓ 自选卡组、热门榜单与标的目录已确认',65);
+    status('正在加载自选行情…','读取已选择标的的有效报价',68);
+    await pollWatchQuotes();
   }
   status('正在准备字体与界面…','初始化字体、字号与移动端布局');
   if(document.fonts?.ready)await document.fonts.ready;
   status('字体与界面已准备','✓ 字体与移动端布局已初始化',72);
   const roots=accountUser&&petHomeOn?[$('petHome')]:accountUser?[document.querySelector('.mast'),document.querySelector('.layout')]:[$('authDialog')];
   const urls=new Set(),pending=[];
+  for(const node of [document.documentElement,document.body])for(const pseudo of [null,'::before'])for(const match of getComputedStyle(node,pseudo).backgroundImage.matchAll(/url\(["']?([^"')]+)["']?\)/g))urls.add(match[1]);
   status('正在加载首屏插画…','加载背景与当前界面的个人形象');
   for(const root of roots){
     if(!root)continue;
     for(const match of getComputedStyle(root).backgroundImage.matchAll(/url\(["']?([^"')]+)["']?\)/g))urls.add(match[1]);
-    for(const node of root.querySelectorAll('.petArtwork image,.petHelmetAvatar')){
+    for(const node of root.querySelectorAll('.petArtwork image,.petHelmetAvatar,img:not([loading="lazy"])')){
       const url=node.currentSrc||node.getAttribute('src')||node.getAttribute('href')||node.getAttribute('xlink:href');if(url)urls.add(url);
     }
-    for(const node of root.querySelectorAll('.authMascot,.petModel')){
+    for(const node of root.querySelectorAll('.authMascot,.petModel,.petIsland,.petActor,.petHomeUtility,.petAccountHelmet')){
       if(getComputedStyle(node).display==='none')continue;
       for(const pseudo of [null,'::before','::after']){
         const style=getComputedStyle(node,pseudo);
@@ -1721,7 +1727,7 @@ async function bootAccount(attempt=0){
     $('authError').textContent='';
     if(result.username)restoreAccount(result);
     else clearAccountView();
-    window.MarketBoot?.ready(prepareMobileEntryVisuals);warmCompanionArtwork();
+    window.MarketBoot?.ready(prepareMobileEntryVisuals,{guest:!result.username});if(result.username)warmCompanionArtwork();
   }catch{if(accountUser)return;
     $('authError').textContent=attempt<3?'账户服务连接中，正在自动重试…':'账户服务暂不可用，请稍后刷新页面重试。';
     setAccess(false);window.MarketBoot?.fail(attempt<3?'正在重新连接…':'账户服务多次连接失败，请重新加载',{exhausted:attempt>=3});
@@ -1836,7 +1842,13 @@ function setupAccount(){
       const result=await postApi('/api/auth/'+authMode,{
         username:$('authUsername').value.trim(),password:$('authPassword').value,
         ...(authMode==='register'?{avatarKind:registrationPetKind}:{})});
+      if(result.adminRedirect==='/admin'){location.assign('/admin');return}
+      const entry=document.documentElement,cover=$('bootCover');entry.dataset.loadingAccount='true';entry.classList.add('bootLoading');entry.classList.remove('bootComplete');if(cover)cover.hidden=false;
       restoreAccount(result);
+      if($('bootStatus'))$('bootStatus').textContent='正在准备你的界面…';
+      let prepareTimer;
+      try{await Promise.race([prepareMobileEntryVisuals(),new Promise((_,reject)=>{prepareTimer=setTimeout(()=>reject(new Error('资源准备超时')),120000)})]);await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))}catch(error){if($('bootStatus'))$('bootStatus').textContent='资源未准备完成，请重新加载';if($('bootRetry'))$('bootRetry').hidden=false;throw error}finally{clearTimeout(prepareTimer)}
+      delete entry.dataset.loadingAccount;entry.classList.add('bootComplete');entry.classList.remove('bootLoading');if(cover)cover.hidden=true;
       $('authPassword').value='';
       if(!$('authSignedError').textContent&&$('authDialog').open)$('authDialog').close();
     }catch(error){$('authError').textContent=error.message}
@@ -1881,6 +1893,7 @@ function rememberTimeframe(a,period,rows,fetchedAt=Date.now()){
   const exhausted=timeframeCache.get(key)?.exhausted===true;
   timeframeCache.delete(key);
   timeframeCache.set(key,{rows,fetchedAt,exhausted});
+  if(typeof scheduleDeckLive==='function')scheduleDeckLive();
   if(timeframeCache.size>((window.MarketDevice?.isMobile?.()??window.innerWidth<=720)?6:12))timeframeCache.delete(timeframeCache.keys().next().value);
   if(rows.length&&!miniData[assetId(a)]?.length)scheduleWatch();
   clearTimeout(candleSessionTimer);
@@ -2143,7 +2156,7 @@ for(let offset=0;offset<unique.length;offset+=30){
       if(Number(q?.c)>0&&Number(q?.t)>0)onQuote(a,Number(q.c),Number(q.t)*1000,Number(q.pc))}
   }catch{}
 }}finally{watchQuotesLoading=false}}
-function onQuote(a,p,t,base,live=false){if(live){marketQuoteReady=true;marketLiveAt=Date.now();marketFailureCount=0;updateMarketSignal({reachable:true})}let k=assetId(a),previous=quotes[k];
+function onQuote(a,p,t,base,live=false){if(!Number.isFinite(p)||p<=0||!Number.isFinite(t))return;if(live){marketQuoteReady=true;marketLiveAt=Date.now();marketFailureCount=0;updateMarketSignal({reachable:true})}let k=assetId(a),previous=quotes[k];
 if(previous&&t<previous.t)return;
 quotes[k]={p,t,base:base||previous?.base};
 let list=recentTicks[k]||(recentTicks[k]=[]);
@@ -2156,7 +2169,7 @@ let old=list.find(x=>x.t>=t-300000);
 if(old&&t-old.t>=180000){let pct=(p/old.p-1)*100;
 if(Math.abs(pct)>=swing&&t-(lastAlerts[k+':swing']||0)>900000){lastAlerts[k+':swing']=t;
 notify(a.symbol+' 5 分钟波动 '+(pct>0?'+':'')+pct.toFixed(2)+'%',pct>0?'先观察回撤与成交额，避免追价。':'检查下跌原因及仓位风险。','波动规则')}}updateWatchQuote(k,p);
-if(!$('petDeck').hidden)updateDeckLive();
+if(!$('petDeck').hidden)scheduleDeckLive();
 if(selected===k){updateHero();
 if(!strategyTimer)strategyTimer=setTimeout(()=>{strategyTimer=null;renderStrategy()},500);
 if(candles.length){let last=candles.at(-1);
@@ -3184,11 +3197,11 @@ function spacePetMarkup(kind,key){
 function companionArtworkUrl(kind){const pet=SPACE_PETS[kind]||SPACE_PETS[0];return '/assets/icons/crypto/'+pet.image.replace('space-','space').replace(/-3d-v\d+/,'')+'?v=20261012-crystal43'}
 function warmCompanionArtwork(){
   if(companionWarmScheduled||!(window.MarketDevice?.isMobile?.()??window.innerWidth<=720))return;companionWarmScheduled=true;
-  let index=0;
+  const kinds=[...new Set([accountAvatarKind,...petSlotGroups().filter(Boolean).map(g=>g.petKind)].filter(kind=>Number.isInteger(kind)))];let index=0;
   const next=()=>{
     if(document.documentElement.classList.contains('bootLoading')){setTimeout(next,500);return}
-    if(index>=SPACE_PETS.length)return;
-    const image=new Image();image.fetchPriority='low';image.decoding='async';image.onload=image.onerror=()=>{setTimeout(next,100)};image.src=companionArtworkUrl(index++);
+    if(index>=kinds.length)return;
+    const image=new Image();image.fetchPriority='low';image.decoding='async';image.onload=image.onerror=()=>{setTimeout(next,100)};image.src=companionArtworkUrl(kinds[index++]);
   };
   if(window.requestIdleCallback)window.requestIdleCallback(next,{timeout:2000});else setTimeout(next,1200);
 }
@@ -3364,7 +3377,7 @@ function loadPetTurntable(dialog,kind){
  loading.then(()=>{
   if(Number(dialog.dataset.kind)!==kind||dialog.roverGeneration!==generation)return;
   const sprite=dialog.querySelector('.petWorldTurntable');sprite.style.backgroundImage='none';sprite.dataset&&(sprite.dataset.renderFrame='');
-  dialog.dataset.turntable='ready';if(status)status.textContent=dialog.dataset.model==='error'?'已显示图片，点此重试':'';setPetWorldAngle(dialog,Number(dialog.dataset.viewAngle)||0);
+  setPetWorldAngle(dialog,Number(dialog.dataset.viewAngle)||0);dialog.dataset.turntable='ready';if(status)status.textContent=dialog.dataset.model==='error'?'已显示图片，点此重试':'';setPetWorldAngle(dialog,Number(dialog.dataset.viewAngle)||0);
  }).catch(()=>{if(Number(dialog.dataset.kind)!==kind||dialog.roverGeneration!==generation)return;dialog.dataset.turntable='error';if(status)status.textContent='旋转视图加载失败，点此重试'});
 }
 function setPetWorldAngle(dialog,angle){
@@ -3426,7 +3439,7 @@ function openPetWorld(kind){
   body.innerHTML='<div class="petWorldExhibit"><div class="petWorldStars" aria-hidden="true"></div><div class="petGlassCase"><div class="petWorldOrbit" aria-hidden="true"></div><div class="petGlassRoof"></div><div class="petGlassWall"></div><img class="petCylinderArtwork" src="/assets/icons/crypto/cryotank.png?v=20261012-cylinder90" alt="" aria-hidden="true" decoding="async"><div class="petWorldSubject"><div class="petWorldTurntable" aria-hidden="true"></div><img class="petWorldCharacter" width="320" height="320" alt="" draggable="false"></div><div class="petGlassFloor"></div><div class="petGlassHalo" aria-hidden="true"></div><div class="petGlassBase"><span>ORBIT · SANCTUARY</span></div><div class="petGlassReflection"></div></div><p class="petWorldPlaque"></p><button type="button" class="petWorldTurnStatus" aria-live="polite"></button></div><div class="petWorldInfo"><span class="petWorldEyebrow">ORBIT ARCHIVE</span><h2></h2><p class="petWorldStory"></p><dl class="petWorldStats"></dl><p class="petWorldFiction">星轨世界观 · 本体尺度设定，展舱为等比例缩影</p></div>';
   dialog.append(head,body);document.body.append(dialog);setupPetWorldRotation(dialog);
  }
- disposePetWorldModel(dialog);dialog.dataset.kind=String(kind);dialog.style.setProperty('--world-accent',profile.color);
+ disposePetWorldModel(dialog);dialog.dataset.turntable='loading';dialog.dataset.kind=String(kind);dialog.style.setProperty('--world-accent',profile.color);
  dialog.querySelector('.petWorldCharacter').src=companionArtworkUrl(kind);dialog.querySelector('.petWorldCharacter').alt=pet.name;
  dialog.querySelector('.petWorldPlaque').textContent=profile.role;setPetWorldAngle(dialog,0);
  dialog.querySelector('h2').textContent=pet.name;dialog.querySelector('.petWorldStory').textContent=PET_LORE_TEXTS[kind];
@@ -3770,6 +3783,12 @@ const petSessionAdds=new Set();
 function currentPetPouch(){return petManagedAssets()}
 function petManagedGroup(){return petDraft||groups.find(g=>g.id===petManagerGroup)}
 function petManagedAssets(){return petDraft?petDraft.assets:assets.filter(a=>a.groupId===petManagerGroup)}
+function canLeavePetManager(){
+ const group=petManagedGroup();if(!group)return true;
+ const name=$('petOwnName')?.value?.trim()||'',savedName=group.petName||group.name||'';
+ const changed=!!petDraft&&(Number.isInteger(petDraft.petKind)||petDraft.assets.length>0)||name!==savedName;
+ return !changed||window.confirm('尚未保存，确认退出吗？');
+}
 function closePetManager(){
   if($('petAssetSearchDialog')?.open)$('petAssetSearchDialog').close();
   petSearchAbort?.abort();petSearchAbort=null;
@@ -3803,7 +3822,9 @@ function removePetGroup(id){
   const main=groups.find(g=>g.id===id);if(main){delete main.petSlot;delete main.petKind;delete main.petName}
   if(activeGroupId===id){activeGroupId=assets.find(a=>a.groupId!==HOT_GROUP_ID)?.groupId||'main';selected=assets.find(a=>a.groupId===activeGroupId)?assetId(assets.find(a=>a.groupId===activeGroupId)):''}
   closePetManager();save();renderGroupOptions();renderWatch();renderPets();connectOkx();loadAsset();
+  window.MarketPhysics?.unlockAudio?.();
 }
+
 function petKindInUse(kind,group){
   return petSlotGroups().some(pet=>pet&&pet.id!==group?.id&&pet.petKind===kind);
 }
@@ -3838,7 +3859,7 @@ function openPetManager(id,draft=null,restore=false){
   if(!$('petManager')){
     const view=document.createElement('section');view.id='petManager';view.className='petManager';view.hidden=true;
     view.innerHTML='<header class="petManagerHead"><button class="petManagerBack" type="button" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.5 5 8.5 12 15.5 19"/></svg></button><strong id="petManagerTitle"></strong></header><div class="petManagerBody"><button id="petCreateConfirm" type="button">创建分组</button><form id="petNameForm"><label for="petOwnName">伙伴名字</label><div class="petNameRow"><input id="petOwnName" maxlength="12" autocomplete="off"><button id="petNameSave" type="submit">保存</button></div></form><p id="petManagerMessage" role="status"></p><label class="petSearchLabel" for="petOwnSearch">添加标的</label><div class="petSearchField"><input id="petOwnSearch" type="search" placeholder="搜索代码或名称" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search"><div id="petOwnResults" hidden></div></div><div id="petCardPouch" class="petCardPouch"><div class="petPouchHead"><strong>卡兜</strong><span id="petPouchCount"></span></div><div id="petPouchCards" class="petPouchCards"></div><div class="petPouchLip"></div></div><span id="petOwnCount" hidden></span><div id="petOwnHoldings" hidden></div><div id="petChoices" class="petChoices" aria-label="选择星际伙伴"></div><button id="petGroupDelete" type="button">删除分组</button></div>';
-    document.body.append(view);view.querySelector('.petManagerBack').onclick=()=>{if(window.MarketMobilePages?.managerBack)window.MarketMobilePages.managerBack();else{closePetManager();closePetDeck()}};
+    document.body.append(view);view.querySelector('.petManagerBack').onclick=()=>{if(window.MarketMobilePages?.managerBack)window.MarketMobilePages.managerBack();else if(canLeavePetManager()){closePetManager();closePetDeck()}};
     const pouchViewport=document.createElement('div');pouchViewport.className='petPouchViewport';
     const pouchList=$('petPouchCards');pouchList.before(pouchViewport);
     const pouchRail=document.createElement('div');pouchRail.id='petPouchScrollRail';pouchRail.className='petPouchScrollRail';pouchRail.tabIndex=0;pouchRail.setAttribute('role','scrollbar');pouchRail.setAttribute('aria-label','上下浏览卡兜');pouchRail.setAttribute('aria-controls','petPouchCards');pouchRail.setAttribute('aria-orientation','vertical');
@@ -3957,11 +3978,13 @@ function renderPetPouch(){
   list.setAttribute('aria-label','卡兜内 '+pouch.length+' 个标的');
   for(const [index,asset] of pouch.entries()){
     const card=document.createElement('div');card.className='petPouchCard filled';card.dataset.symbol=asset.symbol;card.dataset.watchId=watchId(asset);card.dataset.depth='0';
-    card.tabIndex=0;card.setAttribute('role','button');card.setAttribute('aria-label','第 '+(index+1)+' 张，'+asset.symbol+'，直接拖动调整顺序，向上拖出卡兜移除');
+    card.tabIndex=0;card.setAttribute('role','button');card.setAttribute('aria-label','第 '+(index+1)+' 张，'+asset.symbol+'，点击查看资料，长按拖动调整顺序，拖出卡兜移除');
     const number=document.createElement('span');number.className='petPouchNumber';number.textContent=String(index+1);
     const symbol=document.createElement('span');symbol.className='petPouchSymbol';symbol.textContent=asset.symbol;
     card.append(number,logoFor(asset),symbol);card.onpointerdown=e=>beginPetPouchGesture(e,card);
+    card.onclick=()=>{if(!card.dataset.pouchGesture&&petManagerGroup)openInfoForPreview(asset)};card.oncontextmenu=e=>e.preventDefault();
     card.onkeydown=e=>{
+      if(e.key==='Enter'||e.key===' '){e.preventDefault();openInfoForPreview(asset);return}
       const members=petManagedAssets(),index=members.indexOf(asset);
       if(e.key==='Delete'){e.preventDefault();removePetPouchAsset(asset,petManagerGroup,petManagerEpoch,accountSpace);return}
       const offset=e.key==='ArrowLeft'?-1:e.key==='ArrowRight'?1:e.key==='ArrowUp'?-5:e.key==='ArrowDown'?5:0;
@@ -4044,7 +4067,16 @@ async function removePetPouchAsset(asset,group,epoch,owner){
 }
 
 function beginPetPouchGesture(event,card){
-  startPetPouchDrag(event,card,card);
+  if(!event.isPrimary||event.button!==0||petHoldingsDragCancel||petInsertBusy)return;
+  const group=petManagerGroup,epoch=petManagerEpoch,owner=accountSpace,list=$('petPouchCards'),scrollTop=list.scrollTop;
+  let timer=0,scrolling=false,finished=false;delete card.dataset.pouchGesture;
+  const cleanup=()=>{if(finished)return;finished=true;clearTimeout(timer);window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up);window.removeEventListener('pointercancel',cancel);window.removeEventListener('blur',cancel);petHoldingsDragCancel=null};
+  const move=e=>{if(e.pointerId!==event.pointerId)return;const dx=e.clientX-event.clientX,dy=e.clientY-event.clientY;if(Math.hypot(dx,dy)>9){scrolling=true;card.dataset.pouchGesture='scroll';clearTimeout(timer)}if(scrolling){if(e.cancelable)e.preventDefault();list.scrollTop=scrollTop-dy}};
+  const up=e=>{if(e.pointerId===event.pointerId)cleanup()};
+  const cancel=e=>{if(!e||e.type==='blur'||e.pointerId===event.pointerId){card.dataset.pouchGesture='cancel';cleanup()}};
+  petHoldingsDragCancel=cancel;
+  window.addEventListener('pointermove',move,{passive:false});window.addEventListener('pointerup',up);window.addEventListener('pointercancel',cancel);window.addEventListener('blur',cancel);
+  timer=setTimeout(()=>{if(finished||scrolling)return;cleanup();if(group!==petManagerGroup||epoch!==petManagerEpoch||owner!==accountSpace)return;card.dataset.pouchGesture='drag';startPetPouchDrag(event,card,card)},320);
 }
 function startPetPouchDrag(event,card,handle){
   if(!event.isPrimary||event.button!==0||petHoldingsDragCancel||petInsertBusy)return;
@@ -4074,6 +4106,11 @@ function startPetPouchDrag(event,card,handle){
     try{handle.releasePointerCapture(event.pointerId)}catch{}ghost.remove();card.classList.remove('petPouchVacant');pouch.classList.remove('removing');petHoldingsDragCancel=null;
     const current=group===petManagerGroup&&epoch===petManagerEpoch&&owner===accountSpace;
     if(commit&&moved&&current){if(removing)removePetPouchAsset(asset,group,epoch,owner);else if(valid)persistPetHoldingsOrder(group,cardsOrder())}
+    if(commit){
+      const release=()=>{document.removeEventListener('click',block,true);document.removeEventListener('pointerdown',release,true)};
+      const block=e=>{if(e.detail>0){e.preventDefault();e.stopImmediatePropagation()}release()};
+      document.addEventListener('click',block,true);document.addEventListener('pointerdown',release,true);setTimeout(release,350);
+    }
     if(current){renderPetHoldings();renderPetPouch()}
   };
   const finish=e=>{if(e.pointerId===event.pointerId){if(Number.isFinite(e.clientX)&&Number.isFinite(e.clientY))move(e);cleanup(true)}},cancel=e=>{if(!e||e.type==='blur'||e.pointerId===event.pointerId)cleanup(false)};petHoldingsDragCancel=cancel;
@@ -4373,7 +4410,7 @@ function resetDeckAnalysis(){
 }
 function deckLiveSparkRows(rows,k,period){
   const result=rows.map(row=>({...row})),last=result.at(-1),q=quotes[k];
-  if(last&&last.confirmed!==true&&q?.p>0&&q.t>=last.t&&q.t<last.t+(tfMs[period]||0)){
+  if(last&&last.confirmed!==true&&q?.p>0&&q.t>=Math.max(last.t,timeframeCache.get(k+'|'+period)?.fetchedAt||0)&&q.t<last.t+(tfMs[period]||0)){
     last.c=q.p;last.h=Math.max(last.h,q.p);last.l=Math.min(last.l,q.p);
   }
   return result;
@@ -4485,19 +4522,30 @@ function deckApplyRatio(k,pack){
 // Keep a loaded card useful while the independent quote request is pending.
 function renderDeckPrice(a,period,node,rows){
   if(!node)return;
-  const q=quotes[assetId(a)],live=Number.isFinite(q?.p)&&q.p>0;
-  const bars=rows?.length?rows:timeframeCache.get(assetId(a)+'|'+period)?.rows;
-  const close=bars?.at(-1)?.c;
-  const value=live?q.p:Number.isFinite(close)&&close>0?close:null;
-  const text=fmt(value,a),source=live?'':value!==null?'K 线收盘价':'';
+  const {value,live}=resolveMarketPrice(a,period,rows);
+  const text=fmt(value,a),source=live?'':value!==null?'K 线价格':'';
   if(node.dataset.priceValue===text&&node.dataset.priceSource===source)return;
   node.dataset.priceValue=text;node.dataset.priceSource=source;
   node.textContent=text;node.title=source|| (live?'最新报价':'等待价格数据');
   if(source){const label=document.createElement('small');label.className='deckPriceSource';label.textContent=source;node.append(label)}
 }
 
+function resolveMarketPrice(a,period,rows){
+  const entry=timeframeCache.get(assetId(a)+'|'+period),q=quotes[assetId(a)];
+  let bars=rows?.length?rows:entry?.rows,last=bars?.at(-1);
+  const cached=entry?.rows?.at(-1);
+  if(cached&&Number.isFinite(cached.c)&&cached.c>0&&(!last||cached.t>=last.t))last=cached;
+  const close=Number.isFinite(last?.c)&&last.c>0?last.c:null;
+  let stamp=Number(last?.t)||0;
+  const duration=typeof tfMs!=='undefined'?tfMs[period]||0:0;
+  if(duration&&stamp&&entry?.fetchedAt&&cached?.t===last?.t)stamp=Math.min(entry.fetchedAt,stamp+duration);
+  const live=Number.isFinite(q?.p)&&q.p>0&&(!Number.isFinite(q.t)||!stamp||q.t>=stamp||close===null);
+  return {value:live?q.p:close,live};
+}
+let deckLiveFrame=0;
+function scheduleDeckLive(){if(deckLiveFrame||document.hidden)return;deckLiveFrame=requestAnimationFrame(()=>{deckLiveFrame=0;if(!document.hidden)updateDeckLive()})}
 function updateDeckLive(){
-  if($('petDeck').hidden||!petDeckGroup)return;
+  if(document.hidden||$('petDeck').hidden||!petDeckGroup)return;
   const members=deckMembers();if(!members.length)return;
   for(const [id,offset] of [['deckCard',0],['deckPrevious',-1],['deckNext',1]]){
   const a=members[(petDeckIndex+offset+members.length)%members.length],card=$(id);if(!card)continue;
@@ -4759,7 +4807,7 @@ function openPetDeck(groupId,index=0){
     if(started==null)return;
     for(const node of stage.querySelectorAll('.deckCard,.deckNeighbor'))
       for(const animation of node.getAnimations?.()||[])
-        if(animation.animationName==='deckQuietSway')animation.startTime=started;
+        if(animation.animationName==='deckQuietSway')animation.startTime=0;
   });
   for(const offset of [-1,0,1]){const members=deckMembers();if(!members.length)break;const a=members[(petDeckIndex+offset+members.length)%members.length];queueMini(a);if(!profiles[assetId(a)])queueProfile(a)}
   if(petDeckTimer)clearInterval(petDeckTimer);
@@ -4775,7 +4823,9 @@ function closePetDeck(){
   if(petDeckTimer){clearInterval(petDeckTimer);petDeckTimer=null}
 }
 function wireDeckStage(){
-  const stage=$('deckStage');let drag=null;
+  const stage=$('deckStage');let drag=null,paintFrame=0;
+  const paintDrag=()=>{paintFrame=0;if(!drag||drag.axis!=='x')return;const card=$('deckCard');card.classList.add('deckDragging');card.style.transition='none';const resisted=drag.dx*.82;card.style.transform=deckSlideTransform(resisted);deckNeighborReveal(resisted)};
+  const flushDrag=()=>{if(paintFrame){cancelAnimationFrame(paintFrame);paintDrag()}};
   stage.addEventListener('pointerdown',e=>{
     if(deckChartMoved.length)return;
     if(e.target.closest('button,a,[role="button"]')||$('deckCard').dataset.busy||!e.isPrimary)return;
@@ -4793,14 +4843,13 @@ function wireDeckStage(){
     while(drag.samples.length>1&&drag.samples[0].t<stamp-120)drag.samples.shift();
     if(drag.axis!=='x')return;
     drag.dx=dx;
-    $('deckCard').classList.add('deckDragging');
-    const card=$('deckCard');card.style.transition='none';
-    const resisted=dx*.82;card.style.transform=deckSlideTransform(resisted);deckNeighborReveal(resisted);
+    if(e.cancelable)e.preventDefault();
+    if(!paintFrame)paintFrame=requestAnimationFrame(paintDrag);
   });
   const reset=()=>{const card=$('deckCard'),transition=++deckTransition;card.dataset.busy='1';card.style.transition='transform 360ms cubic-bezier(.22,.72,.25,1)';card.style.transform=deckSlideTransform(0);deckNeighborReveal(0,true);setTimeout(()=>{if(transition===deckTransition){deckNeighborReveal(0);card.dataset.busy=''}},370)};
   stage.addEventListener('pointerup',e=>{
     if(!drag||e.pointerId!==drag.id)return;
-    const d=drag;drag=null;$('deckCard').classList.remove('deckDragging');
+    flushDrag();const d=drag;drag=null;$('deckCard').classList.remove('deckDragging');
     const released=performance.now(),first=d.samples[0],last=d.samples.at(-1);
     const velocity=(last.x-first.x)/Math.max(1,last.t-first.t);
     const previous=d.samples.at(-2)||first;
@@ -4811,7 +4860,7 @@ function wireDeckStage(){
     if(d.axis==='x'&&(Math.abs(d.dx)>threshold||flick))flipDeck(d.dx<0?1:-1);
     else reset();
   });
-  stage.addEventListener('pointercancel',()=>{drag=null;$('deckCard').classList.remove('deckDragging');reset()});
+  stage.addEventListener('pointercancel',()=>{if(paintFrame){cancelAnimationFrame(paintFrame);paintFrame=0}drag=null;$('deckCard').classList.remove('deckDragging');reset()});
 }
 function buildDeckShell(){
   const deck=$('petDeck');
@@ -4850,7 +4899,7 @@ function syncMobileReturnButtons(){
   }
 }
 function setupPetHome(){
-  window.MarketMobilePages?.setActions({goHome:returnToPetHome,openDeck:openPetDeck,closeDeck:closePetDeck,openChart:openDeckChart,closeChart:closeDeckChart,openManager:openPetManager,managerDraft:()=>petDraft,openSearch:()=>{const source=petDeckGroup||activeGroupId;openPetManager(source===HOT_GROUP_ID?'main':source);openPetAssetSearch()},closeManager:closePetManager});
+  window.MarketMobilePages?.setActions({goHome:returnToPetHome,openDeck:openPetDeck,closeDeck:closePetDeck,openChart:openDeckChart,closeChart:closeDeckChart,openManager:openPetManager,managerDraft:()=>petDraft,canLeaveManager:canLeavePetManager,openSearch:()=>{const source=petDeckGroup||activeGroupId;openPetManager(source===HOT_GROUP_ID?'main':source);openPetAssetSearch()},closeManager:closePetManager});
   const classicBack=document.createElement('button');
   classicBack.type='button';classicBack.className='mobileClassicBack';classicBack.setAttribute('aria-label','返回');
   classicBack.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15.5 5 8.5 12 15.5 19"/></svg>';

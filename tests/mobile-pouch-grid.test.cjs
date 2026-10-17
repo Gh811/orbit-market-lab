@@ -13,9 +13,9 @@ class Node{
   cloneNode(){return new Node()}
   getBoundingClientRect(){if(!this.parentNode)return{left:0,right:350,top:100,bottom:440,width:350,height:340};const i=this.parentNode.children.indexOf(this),left=(i%5)*70,top=100+Math.floor(i/5)*82;return{left,right:left+62,top,bottom:top+74,width:62,height:74}}
 }
-const members=Array.from({length:50},(_,i)=>({symbol:'S'+i})),nodes=Object.fromEntries(['petPouchCards','petPouchCount','petCardPouch'].map(id=>[id,new Node()])),listeners=new Map();let saves=0;
-const c={clearTimeout(){},petManagerSearchTimer:null,petManagerSerial:0,loadCatalog(){},petManagerGroup:'g',petManagerEpoch:1,accountSpace:'alice',petInsertBusy:false,petHoldingsDragCancel:null,MAX_GROUP_ASSETS:50,
-  $:id=>nodes[id],currentPetPouch:()=>members,petManagedAssets:()=>members,watchId:a=>a.symbol,logoFor:()=>new Node(),document:{createElement:()=>new Node(),body:new Node()},
+const members=Array.from({length:50},(_,i)=>({symbol:'S'+i})),nodes=Object.fromEntries(['petPouchCards','petPouchCount','petCardPouch'].map(id=>[id,new Node()])),listeners=new Map();let saves=0,hold=null,profiles=0;
+const c={setTimeout(fn){hold=fn;return 1},clearTimeout(){hold=null},openInfoForPreview(){profiles++},petManagerSearchTimer:null,petManagerSerial:0,loadCatalog(){},petManagerGroup:'g',petManagerEpoch:1,accountSpace:'alice',petInsertBusy:false,petHoldingsDragCancel:null,MAX_GROUP_ASSETS:50,
+  $:id=>nodes[id],currentPetPouch:()=>members,petManagedAssets:()=>members,watchId:a=>a.symbol,logoFor:()=>new Node(),document:{createElement:()=>new Node(),body:new Node(),addEventListener(){},removeEventListener(){}},
   window:{addEventListener(n,f){listeners.set(n,f)},removeEventListener(n,f){if(listeners.get(n)===f)listeners.delete(n)}},requestAnimationFrame:()=>1,cancelAnimationFrame(){},
   persistPetHoldingsOrder(g,ids){saves++;members.sort((a,b)=>ids.indexOf(a.symbol)-ids.indexOf(b.symbol))},renderPetHoldings(){}};
 vm.createContext(c);
@@ -24,8 +24,9 @@ vm.runInContext(source.slice(source.indexOf('function startPetPouchDrag('),sourc
 vm.runInContext(source.slice(source.indexOf('function beginPetPouchGesture('),source.indexOf('function startPetPouchDrag(')),c);
 c.renderPetPouch();const list=nodes.petPouchCards;
 assert.equal(list.querySelectorAll().length,50);assert.equal(list.children.length,51,'search plus remains available even when full');assert.deepEqual(list.querySelectorAll().map(n=>n.querySelector('.petPouchNumber').textContent),Array.from({length:50},(_,i)=>String(i+1)));
+list.children[0].onclick();assert.equal(profiles,1,'tap opens asset profile');
 function drag(commit){const card=list.children[0];card.onpointerdown({isPrimary:true,button:0,pointerId:1,clientX:30,clientY:130,preventDefault(){},stopPropagation(){}});
-  assert.ok(listeners.has('pointermove'),'pointerdown immediately starts dragging without a long-press timer');
+  assert.equal(card.dataset.pouchGesture,undefined);const activate=hold;assert.equal(typeof activate,'function');activate();assert.equal(card.dataset.pouchGesture,'drag','long hold activates drag');
   listeners.get('pointercancel')({type:'pointercancel',pointerId:2});assert.ok(listeners.has('pointermove'),'a second finger cannot cancel the active drag');
   listeners.get('pointermove')({pointerId:1,clientX:260,clientY:215,cancelable:true,preventDefault(){}});
   assert.ok(list.children.indexOf(card)>=5,'card crosses into the second row');

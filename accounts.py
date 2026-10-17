@@ -136,6 +136,10 @@ def default_account_state():
     return clean_state({"groups":groups,"assets":assets,"activeGroup":"main","selected":"swap:BTC"})
 
 
+class AccountBanned(ValueError):
+    pass
+
+
 class AccountStore:
     def __init__(self, path, release_id=None):
         self.path = Path(path)
@@ -144,7 +148,13 @@ class AccountStore:
             db.execute("BEGIN IMMEDIATE")
             db.execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT NOT NULL, username_key TEXT NOT NULL UNIQUE, salt BLOB NOT NULL, password_hash BLOB NOT NULL, state TEXT)")
             db.execute("CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, user_id INTEGER NOT NULL, expires INTEGER NOT NULL, FOREIGN KEY(user_id) REFERENCES users(id))")
+            if 'last_seen' not in {row[1] for row in db.execute("PRAGMA table_info(sessions)")}:
+                db.execute("ALTER TABLE sessions ADD COLUMN last_seen INTEGER NOT NULL DEFAULT 0")
             columns = {row[1] for row in db.execute("PRAGMA table_info(users)")}
+            if "banned" not in columns:
+                db.execute("ALTER TABLE users ADD COLUMN banned INTEGER NOT NULL DEFAULT 0")
+            for name,definition in [('ban_reason',"TEXT NOT NULL DEFAULT ''"),('banned_at','INTEGER NOT NULL DEFAULT 0'),('ip_region',"TEXT NOT NULL DEFAULT '未知'"),('region_updated','INTEGER NOT NULL DEFAULT 0')]:
+                if name not in columns:db.execute('ALTER TABLE users ADD COLUMN '+name+' '+definition)
             if "space_id" not in columns:
                 db.execute("ALTER TABLE users ADD COLUMN space_id TEXT")
             if "state_updated" not in columns:
@@ -220,14 +230,22 @@ class AccountStore:
 
     def _public_user(self, user_id):
         with self._db() as db:
-            row = db.execute("SELECT username, state, space_id, state_updated, public_id, avatar_kind, avatar_changed_day FROM users WHERE id=?", (user_id,)).fetchone()
+            row = db.execute("SELECT username, state, space_id, state_updated, public_id, avatar_kind, avatar_changed_day, ip_region FROM users WHERE id=?", (user_id,)).fetchone()
         return {"username": row[0], "state": json.loads(row[1]) if row[1] else None,
                 "spaceId": row[2], "stateUpdated": row[3], "userId": row[4],
-                "avatarKind": row[5], "avatarChangedDay": row[6], "avatarCanChange": row[6] != self._avatar_day()}
+                "avatarKind": row[5], "avatarChangedDay": row[6], "ipRegion":row[7], "avatarCanChange": row[6] != self._avatar_day()}
 
     @staticmethod
     def _avatar_day():
         return datetime.fromtimestamp(time.time(), ZoneInfo("Asia/Shanghai")).date().isoformat()
+
+    def record_region(self,user_id,region):
+        region=str(region or '未知')[:96]
+        with self._db() as db:
+            row=db.execute('SELECT ip_region,region_updated FROM users WHERE id=?',(user_id,)).fetchone()
+            if row and (row[0]!=region or row[1]<int(time.time())-300):
+                db.execute('UPDATE users SET ip_region=?,region_updated=? WHERE id=?',(region,int(time.time()),user_id))
+        return region
 
     def change_avatar(self, user_id, kind):
         if type(kind) is not int or not 0 <= kind < 8:
@@ -249,10 +267,11 @@ class AccountStore:
                 or not isinstance(password, str) or not 1 <= len(password) <= 128):
             raise ValueError("用户名或密码不正确")
         with self._db() as db:
-            row = db.execute("SELECT id, username, salt, password_hash FROM users WHERE username_key=?",
+            row = db.execute("SELECT id, username, salt, password_hash, banned, ban_reason FROM users WHERE username_key=?",
                              (username.casefold(),)).fetchone()
         if not row or not hmac.compare_digest(self._password_hash(password, row[2]), row[3]):
             raise ValueError("用户名或密码不正确")
+        if row[4]:raise AccountBanned("该账号已被封禁。原因："+(row[5] or "请联系管理员"))
         token = self._new_session(row[0])
         return self.session(token), token
 
@@ -274,9 +293,12 @@ class AccountStore:
     def _new_session(self, user_id):
         token = secrets.token_urlsafe(32)
         with self._db() as db:
+            db.execute("BEGIN IMMEDIATE")
+            user=db.execute("SELECT banned FROM users WHERE id=?",(user_id,)).fetchone()
+            if not user or user[0]:raise AccountBanned("该账号已被封禁，请联系管理员")
             db.execute("DELETE FROM sessions WHERE expires < ?", (int(time.time()),))
-            db.execute("INSERT INTO sessions(token_hash, user_id, expires) VALUES(?,?,?)",
-                       (hashlib.sha256(token.encode()).hexdigest(), user_id, int(time.time()) + SESSION_SECONDS))
+            db.execute("INSERT INTO sessions(token_hash, user_id, expires, last_seen) VALUES(?,?,?,?)",
+                       (hashlib.sha256(token.encode()).hexdigest(), user_id, int(time.time()) + SESSION_SECONDS, int(time.time())))
         return token
 
     def session(self, token):
@@ -284,8 +306,10 @@ class AccountStore:
             return None
         digest = hashlib.sha256(token.encode()).hexdigest()
         with self._db() as db:
-            row = db.execute("SELECT users.id FROM sessions JOIN users ON users.id=sessions.user_id WHERE token_hash=? AND expires>?",
+            row = db.execute("SELECT users.id, sessions.last_seen FROM sessions JOIN users ON users.id=sessions.user_id WHERE token_hash=? AND expires>? AND users.banned=0",
                              (digest, int(time.time()))).fetchone()
+            if row and row[1] < int(time.time())-30:
+                db.execute("UPDATE sessions SET last_seen=? WHERE token_hash=? AND last_seen<?",(int(time.time()),digest,int(time.time())-30))
         if not row:
             return None
         user = self._public_user(row[0])
@@ -297,9 +321,10 @@ class AccountStore:
         state = clean_state(raw)
         with self._db() as db:
             db.execute("BEGIN IMMEDIATE")
-            current = db.execute("SELECT state_updated FROM users WHERE id=?", (user_id,)).fetchone()
+            current = db.execute("SELECT state_updated,banned FROM users WHERE id=?", (user_id,)).fetchone()
             if not current:
                 raise ValueError("账号不存在")
+            if current[1]:raise AccountBanned("该账号已被封禁，请联系管理员")
             expected = raw.get("expectedUpdated")
             if expected is not None and expected != current[0]:
                 raise StateConflict()

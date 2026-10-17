@@ -1,8 +1,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const source=fs.readFileSync(require('node:path').join(__dirname,'../assets/app.js'),'utf8');
-const a=source.indexOf('function beginPetPouchGesture('),b=source.indexOf('\nfunction startPetPouchDrag(',a);
-let received;const c={startPetPouchDrag(...args){received=args},setTimeout(){assert.fail('Dragging must not wait for a timer')}};
-vm.createContext(c);vm.runInContext(source.slice(a,b),c);
-const down={pointerId:1,isPrimary:true,button:0,clientX:100,clientY:100},card={};
-c.beginPetPouchGesture(down,card);assert.deepEqual(received,[down,card,card]);
-console.log('Pouch gesture: direct pointerdown starts card dragging without a long-press delay PASS');
+const source=fs.readFileSync('assets/app.js','utf8'),a=source.indexOf('function beginPetPouchGesture('),b=source.indexOf('\nfunction startPetPouchDrag(',a);let received=null,timer=null;const events={},list={scrollTop:100},card={dataset:{}};
+const c={petHoldingsDragCancel:null,petInsertBusy:false,petManagerGroup:'main',petManagerEpoch:1,accountSpace:'alice',$:()=>list,startPetPouchDrag(...args){received=args},setTimeout(fn){timer=fn;return 1},clearTimeout(){timer=null},window:{addEventListener(n,fn){events[n]=fn},removeEventListener(n,fn){if(events[n]===fn)delete events[n]}}};vm.createContext(c);vm.runInContext(source.slice(a,b),c);const down={pointerId:1,isPrimary:true,button:0,clientX:100,clientY:100};
+c.beginPetPouchGesture(down,card);assert.equal(received,null);events.pointerup({pointerId:1});assert.equal(timer,null);assert(!card.dataset.pouchGesture,'short tap remains available for profile click');
+c.beginPetPouchGesture(down,card);timer();assert.deepEqual(received,[down,card,card]);assert.equal(card.dataset.pouchGesture,'drag');received=null;
+c.beginPetPouchGesture(down,card);events.pointermove({pointerId:1,clientX:100,clientY:60,cancelable:true,preventDefault(){}});assert.equal(timer,null);assert.equal(list.scrollTop,140);assert.equal(card.dataset.pouchGesture,'scroll');events.pointerup({pointerId:1});assert.equal(received,null);
+c.beginPetPouchGesture(down,card);c.petHoldingsDragCancel();assert.equal(timer,null);assert.equal(c.petHoldingsDragCancel,null);assert.equal(card.dataset.pouchGesture,'cancel');console.log('Pouch: tap opens profile path, long press starts drag, scroll cancels hold, navigation cancels pending timer PASS');

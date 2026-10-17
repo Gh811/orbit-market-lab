@@ -196,3 +196,43 @@ html[data-device="phone"] body{contain:none;overflow:hidden}
 html[data-device="phone"] :is(dialog.detailDialog,dialog.mobileSheet)::backdrop{position:fixed;inset:-256px;min-height:calc(var(--wallpaper-viewport-height,100%) + 512px)}
 html.orbitAndroid[data-device="phone"]{--ui-safe-top:0px;--ui-safe-bottom:0px}
 #clientUpdateNotice{position:fixed;bottom:calc(var(--ui-safe-bottom,0px) + 14px);left:50%;transform:translateX(-50%);z-index:10000;max-width:calc(100% - 32px);padding:12px 18px;border:1px solid #d6bc7a88;border-radius:24px;background:#162738;color:#e8d6ab;box-shadow:0 8px 22px #0006;font-size:13px}
+
+/* The root paints browser overscroll even when a fixed layer is recomposited. */
+html[data-device="phone"]{background-position:center;background-size:cover;min-height:100%;}
+html[data-device="phone"]::before{top:-256px;height:calc(var(--wallpaper-viewport-height,100%) + 768px);min-height:calc(100% + 768px)}
+
+/* iOS modal content follows the visual viewport; its wallpaper belongs to the
+   layout viewport and extends through the home-indicator safe area. */
+html[data-device="phone"]{min-height:calc(var(--mobile-surface-height,100%) + env(safe-area-inset-bottom,0px))}
+html[data-device="phone"] body{background:transparent!important}
+html[data-os="ios"][data-device="phone"] #authDialog,
+html[data-os="ios"][data-device="phone"] #mobilePasswordPage,
+html[data-os="ios"][data-device="phone"] #authDialog::backdrop,
+html[data-os="ios"][data-device="phone"] #mobilePasswordPage::backdrop{background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+
+/* Shared wallpaper continues underneath every translucent application page. */
+html[data-device="phone"] :is(#authDialog,#mobilePasswordPage,#petNewsDialog,#researchDialog,#requiredUpdateDialog),
+html[data-device="phone"] :is(#authDialog,#mobilePasswordPage,#petNewsDialog,#researchDialog,#requiredUpdateDialog)::backdrop{background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+html[data-device="phone"] #requiredUpdateDialog:before{display:none}
+html[data-device="phone"] #researchDialog .researchFrameHost{margin-bottom:0;padding-bottom:var(--ui-safe-bottom,0px);box-sizing:border-box}
+
+/* Transparent page surfaces expose only wallpaper, never the inactive page. */
+html[data-device="phone"] body.mobileModalOpen :is(#petHome,#petDeck,#petManager),
+html[data-device="phone"] body.mobileModalOpen :is(#petHome,#petDeck,#petManager) *{visibility:hidden!important;pointer-events:none!important}
+@supports selector(:has(*)){
+ html[data-device="phone"] body:has(dialog[open]) :is(#petHome,#petDeck,#petManager),
+ html[data-device="phone"] body:has(dialog[open]) :is(#petHome,#petDeck,#petManager) *{visibility:hidden!important;pointer-events:none!important}
+}
+
+html[data-device="phone"] dialog.mobileUnderlay,
+html[data-device="phone"] dialog.mobileUnderlay *,
+html[data-device="phone"] dialog.mobileUnderlay::backdrop{visibility:hidden!important;pointer-events:none!important}
+
+/* Password entry is an opaque privacy surface, including nested dialogs on iOS. */
+html[data-device="phone"][data-os] #mobilePasswordPage,
+html[data-device="phone"][data-os] #mobilePasswordPage::backdrop{
+ background:#263c58!important;
+ background-image:linear-gradient(180deg,#162c4666,#1c355477),url('/assets/icons/crypto/crystalbg.png?v=20261012-crystal43')!important;
+ background-size:cover!important;background-position:center!important;
+ opacity:1;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+}

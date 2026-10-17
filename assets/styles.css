@@ -4734,3 +4734,32 @@ html[data-os="android"] :is(button,input:not([type="checkbox"]):not([type="radio
  html[data-device="phone"] #authDialog.accountSignedView>.mobilePageHeader{background:transparent;border-bottom:0}
  @media(max-height:700px){html[data-device="phone"] #authDialog.accountSignedView .authMascot{height:92px;margin-bottom:4px}html[data-device="phone"] #authDialog.accountSignedView .authMascot:after{width:92px;height:92px}}
 }
+
+/* Keep one visual identity while the decoded rotation atlas becomes ready. */
+#petWorldDialog:not([data-turntable="error"]) .petWorldCharacter{display:none}
+html[data-os="android"] button{font-family:inherit;letter-spacing:inherit;-webkit-tap-highlight-color:transparent}
+html[data-os="android"] #petDeck .deckStage{touch-action:pan-y;user-select:none;-webkit-user-select:none}
+html[data-os="android"] #petDeck .deckDragging{will-change:transform}
+html[data-os="android"] #petDeck .deckDragging :is(.deckFrame,.deckSparkWrap){backdrop-filter:none;-webkit-backdrop-filter:none}
+
+/* All three solid cards keep the same continuous sway through drag and handoff. */
+#petDeck:not(.deckChartMode) .deckStage :is(.deckCard,.deckNeighbor){animation-play-state:running!important}
+@media(prefers-reduced-motion:reduce){#petDeck .deckStage :is(.deckCard,.deckNeighbor){animation:none!important}}
+
+#authDialog #accountAvatarSave{display:block;width:auto;min-height:36px;margin:8px 0 12px auto;padding:7px 14px;font-size:12px;border-radius:10px}
+
+#authDialog #accountIpRegion{display:block;flex:none;text-align:center;font-size:10px;line-height:14px;color:#a4b4c6;margin:0}
+
+#authDialog #authSigned .accountRegionRow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0;padding:8px 12px;border:1px solid #c2d4e51a;border-radius:10px;background:#dceaff08;color:#aebfd1;font-size:11px;line-height:16px}
+#authDialog #authSigned .accountRegionRow:after{display:none}
+#authDialog #accountIpRegion{display:inline;text-align:right;margin:0;font-size:11px;line-height:16px;font-weight:500;color:#dbe5ef}
+#authDialog.accountSignedView .authSigned{gap:8px;min-height:0}
+#authDialog #accountAvatarDetails[open]{overflow:hidden;max-height:none}
+#authDialog #accountAvatarDetails[open]>summary{position:relative;flex:none;z-index:1;touch-action:manipulation}
+#authDialog #accountAvatarChoices{max-height:min(26vh,200px);overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y}
+@media(max-height:650px){
+ #authDialog.accountSignedView .authSigned{gap:6px}
+ #authDialog .accountIdentityPlate{padding:7px 14px;margin-bottom:2px}
+ #authDialog #authSigned .accountIdentityPlate>p+p{margin-top:6px}
+ #authDialog #authSigned .accountRegionRow{padding:5px 12px}
+}

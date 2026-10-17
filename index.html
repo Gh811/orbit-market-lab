@@ -3,7 +3,8 @@
  <head>
   <meta charset="utf-8"/>
   <style data-entry-guard>
-   html[data-orbit-entry]{background:#263c58}
+   html[data-orbit-entry]{min-height:100%;background:#263c58 url('/assets/icons/crypto/crystalbg.png') center/cover no-repeat!important}
+   html[data-orbit-entry] body{background-color:#263c58!important;overscroll-behavior:none}
    html[data-orbit-entry] body{visibility:hidden}
    html[data-orbit-entry].entryStylesReady body{visibility:visible}
   </style>
@@ -368,12 +369,13 @@
        <p><span>用户名：</span><strong id="authSignedName"></strong></p>
        <p><span>用户 ID：</span><code id="accountId">—</code></p>
       </div>
+      <p class="accountRegionRow"><span>IP 归属地</span><strong id="accountIpRegion">未知</strong></p>
       <details id="accountAvatarDetails" hidden><summary>修改个人形象</summary>
        <p>当前形象：<strong id="accountAvatarCurrent"></strong></p>
+       <button id="accountAvatarSave" class="accent authSubmit" type="button">保存个人形象</button>
        <div id="accountAvatarChoices" class="authPetChoices" role="group" aria-label="选择个人形象"></div>
        <p id="accountAvatarLimit" role="status"></p>
        <p id="accountAvatarError" class="authError" role="status"></p>
-       <button id="accountAvatarSave" class="accent authSubmit" type="button">保存个人形象</button>
       </details>
       <details class="passwordDetails" id="passwordDetails"><summary>修改密码</summary>
        <form class="authForm" id="passwordForm">
