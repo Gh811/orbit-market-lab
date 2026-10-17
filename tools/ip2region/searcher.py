@@ -14,7 +14,7 @@ class Searcher(object):
     xdb searcher class with Both IPv4 and IPv6 supported.
     three kinds of cache policy: file / vectorIndex / content
     '''
-    def __init__(self, version: util.Version, 
+    def __init__(self, version: util.Version,
                  db_path: str, vector_index: bytes, c_buffer: bytes):
         self.version = version
         self.__db_path = db_path
@@ -66,7 +66,7 @@ class Searcher(object):
             buff = self.read(util.HeaderInfoLength + idx, util.VectorIndexSize)
             s_ptr = util.le_get_uint32(buff, 0)
             e_ptr = util.le_get_uint32(buff, 4)
-        
+
         # print("s_ptr: {}, e_ptr: {}".format(s_ptr, e_ptr))
         # @Note: ptr validate, zero ptr means source data missing
         # so we could just stop here and return an empty string.
@@ -105,7 +105,7 @@ class Searcher(object):
         # check the content buffer first
         if self.c_buffer != None:
             return self.c_buffer[offset:offset+length]
-        
+
         # load the buffer from file
         self.__handle.seek(offset)
         self.__io_count += 1

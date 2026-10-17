@@ -49,12 +49,12 @@ class Header(object):
     "ipVersion": {},
     "runtimePtrBytes": {}
 }}'''.format(
-        self.version, 
-        self.indexPolicy, 
-        self.createdAt, 
-        self.startIndexPtr, 
-        self.endIndexPtr, 
-        self.ipVersion, 
+        self.version,
+        self.indexPolicy,
+        self.createdAt,
+        self.startIndexPtr,
+        self.endIndexPtr,
+        self.ipVersion,
         self.runtimePtrBytes
     )
 
@@ -111,9 +111,9 @@ class Version(object):
 
     def __str__(self):
         return '{{"id": {}, "name": "{}", "bytes": {}, "index_size": {}}}'.format(
-            self.id, 
-            self.name, 
-            self.byte_num, 
+            self.id,
+            self.name,
+            self.byte_num,
             self.index_size
         )
 
@@ -127,7 +127,7 @@ def _v4_sub_compare(ip1: bytes, buff: bytes, offset: int):
         i2 = buff[j]
         if i1 < i2:
             return -1
-        
+
         if i1 > i2:
             return 1
 
@@ -178,7 +178,7 @@ def le_get_uint32(buff: bytes, offset: int):
     '''
     return (
         ((buff[offset  ]) & 0x000000FF) |
-        ((buff[offset+1] <<  8) & 0x0000FF00) | 
+        ((buff[offset+1] <<  8) & 0x0000FF00) |
         ((buff[offset+2] << 16) & 0x00FF0000) |
         ((buff[offset+3] << 24) & 0xFF000000)
     )
@@ -240,7 +240,7 @@ def load_content_from_file(db_file: str):
 # Verify if the current Searcher could be used to search the specified xdb file.
 # Why do we need this check ?
 # The future features of the xdb impl may cause the current searcher not able to work properly.
-# 
+#
 # @Note: You Just need to check this ONCE when the service starts
 # Or use another process (eg, A command) to check once Just to confirm the suitability.
 def verify(handle):
